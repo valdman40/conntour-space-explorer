@@ -1,10 +1,10 @@
 import React from 'react';
-import Sources from './components/Sources';
+import MainPage from './components/MainPage';
 
 const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100">
-      <Sources />
+      <MainPage />
     </div>
   );
 };
