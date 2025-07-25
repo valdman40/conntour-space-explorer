@@ -64,7 +64,7 @@ interface NasaImageCardProps {
   nasaImage: NasaImage;
 }
 
-export const NasaImageCard: React.FC<NasaImageCardProps> = ({ nasaImage }) => {
+export const NasaImageCard: React.FC<NasaImageCardProps> = React.memo(({ nasaImage }) => {
   const { t } = useTranslation();
   
   if (!nasaImage) return null;
@@ -86,4 +86,4 @@ export const NasaImageCard: React.FC<NasaImageCardProps> = ({ nasaImage }) => {
       )}
     </Card>
   );
-};
+});

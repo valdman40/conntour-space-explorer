@@ -8,6 +8,9 @@
     "title": "NASA Space Images",
     "subtitle": "Discover amazing space exploration images and datasets",
     "loadingMessage": "Loading NASA images...",
-    "errorMessage": "Failed to fetch NASA images. Please try again later."
+    "errorMessage": "Failed to fetch NASA images. Please try again later.",
+    "loadingMore": "Loading more images...",
+    "loadMore": "Load More",
+    "allLoaded": "All images loaded!"
   }
 }
