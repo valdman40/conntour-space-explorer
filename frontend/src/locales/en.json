@@ -1,0 +1,13 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "reload": "Reload Images",
+    "viewFullImage": "View Full Image"
+  },
+  "mainPage": {
+    "title": "NASA Space Images",
+    "subtitle": "Discover amazing space exploration images and datasets",
+    "loadingMessage": "Loading NASA images...",
+    "errorMessage": "Failed to fetch NASA images. Please try again later."
+  }
+}

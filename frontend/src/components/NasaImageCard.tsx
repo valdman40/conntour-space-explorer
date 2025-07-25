@@ -1,5 +1,6 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { fadeIn } from './common/animations';
 import { LinkButton } from './common';
 import { NasaImage } from './types/NasaImage';
@@ -41,6 +42,7 @@ const CardTitle = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  text-align: start; /* RTL-aware alignment */
   ${textClamp(2)}
 `;
 
@@ -48,6 +50,7 @@ const CardDescription = styled.p`
   margin-bottom: 1rem;
   opacity: 0.9;
   line-height: 1.6;
+  text-align: start; /* RTL-aware alignment */
   ${textClamp(5)}
 `;
 
@@ -62,6 +65,8 @@ interface NasaImageCardProps {
 }
 
 export const NasaImageCard: React.FC<NasaImageCardProps> = ({ nasaImage }) => {
+  const { t } = useTranslation();
+  
   if (!nasaImage) return null;
   const { image_url, name, description, launch_date } = nasaImage;
   return (
@@ -76,7 +81,7 @@ export const NasaImageCard: React.FC<NasaImageCardProps> = ({ nasaImage }) => {
       </CardDate>
       {image_url && (
         <LinkButton href={image_url} target="_blank" rel="noopener noreferrer">
-          View Full Image
+          {t('common.viewFullImage')}
         </LinkButton>
       )}
     </Card>

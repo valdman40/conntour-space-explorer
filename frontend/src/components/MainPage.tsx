@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { Container, PageHeader, LoadingSpinner, ErrorMessage, Button } from './common';
 import { NasaImagesList } from './NasaImagesList';
 import { NasaImage } from './types/NasaImage';
@@ -11,6 +12,7 @@ const ReloadButtonWrapper = styled.div`
 `;
 
 const MainPage: React.FC = () => {
+  const { t } = useTranslation();
   const [nasaImages, setNasaImages] = useState<NasaImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ const MainPage: React.FC = () => {
       
       setNasaImages(response.data);
     } catch (err) {
-      setError('Failed to fetch NASA images. Please try again later.');
+      setError(t('mainPage.errorMessage'));
     } finally {
       setLoading(false);
     }
@@ -47,7 +49,7 @@ const MainPage: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <LoadingSpinner message="Loading NASA images..." />
+        <LoadingSpinner message={t('mainPage.loadingMessage')} />
       </Container>
     );
   }
@@ -63,12 +65,12 @@ const MainPage: React.FC = () => {
   return (
     <Container>
       <PageHeader 
-        title="NASA Space Images" 
-        subtitle="Discover amazing space exploration images and datasets" 
+        title={t('mainPage.title')} 
+        subtitle={t('mainPage.subtitle')} 
       />
       <ReloadButtonWrapper>
         <Button onClick={handleReload} disabled={loading}>
-          {loading ? 'Loading...' : 'Reload Images'}
+          {loading ? t('common.loading') : t('common.reload')}
         </Button>
       </ReloadButtonWrapper>
       <NasaImagesList nasaImages={nasaImages} />
