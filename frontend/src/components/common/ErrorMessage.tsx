@@ -1,11 +1,18 @@
 import React from 'react';
 import styled from 'styled-components';
+import { colors } from '../../constants/colors';
+import { sizes } from '../../constants/sizes';
 
 const ErrorContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
   text-align: center;
-  color: #ff6b6b;
-  font-size: 1.25rem;
-  margin-top: 2rem;
+  color: ${colors.error};
+  font-size: ${sizes.fontSize.lg};
+  margin: ${sizes.margin.xl} 0;
+  padding: ${sizes.padding.lg};
 `;
 
 interface ErrorMessageProps {

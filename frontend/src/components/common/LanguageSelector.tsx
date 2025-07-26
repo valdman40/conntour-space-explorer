@@ -1,27 +1,35 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
+import { colors } from '../../constants/colors';
+import { sizes } from '../../constants/sizes';
 
 const LanguageSwitcher = styled.div`
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
+  position: fixed;
+  top: ${sizes.spacing.xl};
+  right: ${sizes.spacing.xl};
   display: flex;
-  gap: 0.5rem;
+  gap: ${sizes.spacing.sm};
   direction: ltr;
+  z-index: ${sizes.zIndex.modal};
 `;
 
 const LanguageButton = styled.button<{ active: boolean }>`
-  background: ${props => props.active ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)'};
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
+  background: ${props => props.active ? colors.interactive.backgroundActive : colors.interactive.background};
+  color: ${colors.text.primary};
+  border: 1px solid ${colors.interactive.borderHover};
+  padding: ${sizes.padding.sm} ${sizes.padding.lg};
+  border-radius: ${sizes.radius.sm};
   cursor: pointer;
   transition: all 0.3s ease;
   
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: ${colors.interactive.backgroundHover};
+    transform: ${sizes.effects.transform.lift};
+  }
+
+  &:active {
+    transform: ${sizes.effects.transform.down};
   }
 `;
 

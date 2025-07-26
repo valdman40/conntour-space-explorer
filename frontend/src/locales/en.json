@@ -11,6 +11,9 @@
     "errorMessage": "Failed to fetch NASA images. Please try again later.",
     "loadingMore": "Loading more images...",
     "loadMore": "Load More",
-    "allLoaded": "All images loaded!"
+    "allLoaded": "All images loaded!",
+    "searchPlaceholder": "Search images...",
+    "retryingIn": "Loading failed. Retrying in {{seconds}} seconds...",
+    "retryingLoadMore": "Failed to load more images. Retrying in {{seconds}} seconds..."
   }
 }

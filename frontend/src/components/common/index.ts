@@ -7,3 +7,6 @@ export { LanguageSelector } from './LanguageSelector';
 export { fadeIn } from './animations';
 export { Button } from './Button';
 export { LinkButton } from './LinkButton';
+export { ReloadIcon } from './ReloadIcon';
+export { SearchBar } from './SearchBar';
+export { LoadMoreSection } from './LoadMoreSection';

@@ -1,28 +1,58 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Container, PageHeader, LoadingSpinner, ErrorMessage, Button } from './common';
+import { Container, PageHeader, LoadingSpinner, ErrorMessage, Button, ReloadIcon, SearchBar, LoadMoreSection } from './common';
 import { NasaImagesList } from './NasaImagesList';
 import { NasaImage } from './types/NasaImage';
+import { colors } from '../constants/colors';
+import { sizes } from '../constants/sizes';
 
-const ReloadButtonWrapper = styled.div`
-  margin: 2rem 0;
-  text-align: center;
+const ToolbarWrapper = styled.div`
+  margin: ${sizes.margin.xl} 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${sizes.spacing.md};
+  flex-wrap: nowrap;
+  width: 100%;
 `;
 
-const LoadMoreWrapper = styled.div`
-  margin: 2rem 0;
-  text-align: center;
+const StickyHeader = styled.div`
+  position: sticky;
+  top: 0;
+  background: ${colors.primary};
+  z-index: ${sizes.zIndex.sticky};
+  padding-bottom: ${sizes.padding.lg};
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const ScrollableArea = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  min-height: 0;
 `;
 
 const ScrollSentinel = styled.div`
-  height: 20px;
-  margin: 1rem 0;
+  height: ${sizes.spacing.xl};
+  margin: ${sizes.margin.md} 0;
 `;
+
+const ITEMS_PER_PAGE = 12;
+const SEARCH_DEBOUNCE_DELAY = 500; // 500ms delay
+const RETRY_DELAY = 3; // 3 seconds
 
 const MainPage: React.FC = () => {
   const { t } = useTranslation();
+  
+  const ITEMS_PER_PAGE = 12;
+  const SEARCH_DEBOUNCE_DELAY = 500; // 500ms delay
+  const RETRY_DELAY = 3; // 3 seconds
+  
   const [nasaImages, setNasaImages] = useState<NasaImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -30,8 +60,75 @@ const MainPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [allData, setAllData] = useState<NasaImage[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+  const [retryParams, setRetryParams] = useState<{ pageNum: number; append: boolean } | null>(null);
+  
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isRetryingRef = useRef(false);
 
-  const ITEMS_PER_PAGE = 12;
+  // Cleanup retry timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Retry countdown effect
+  useEffect(() => {
+    console.log('Countdown effect triggered:', { retryCountdown, retryParams: retryParams?.pageNum });
+    
+    if (retryCountdown === null || retryCountdown <= 0) {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      
+      if (retryCountdown === 0 && retryParams && !isRetryingRef.current) {
+        // Execute the retry
+        console.log('Executing retry for page:', retryParams.pageNum);
+        isRetryingRef.current = true;
+        const params = retryParams;
+        setRetryCountdown(null);
+        setRetryParams(null);
+        setError(null);
+        
+        setTimeout(() => {
+          fetchNasaImages(params.pageNum, params.append);
+          isRetryingRef.current = false;
+        }, 100);
+      }
+      return;
+    }
+
+    // Set timer for next countdown
+    retryTimeoutRef.current = setTimeout(() => {
+      console.log('Countdown tick:', retryCountdown, '->', retryCountdown - 1);
+      setRetryCountdown(prev => prev !== null && prev > 0 ? prev - 1 : null);
+    }, 1000);
+
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    };
+  }, [retryCountdown]);
+
+  const startRetry = useCallback((pageNum: number, append: boolean) => {
+    // Prevent starting a new retry if one is already in progress
+    if (isRetryingRef.current || retryCountdown !== null) {
+      console.log('Retry blocked: already in progress', { isRetrying: isRetryingRef.current, countdown: retryCountdown });
+      return;
+    }
+    
+    console.log('Starting retry for page:', pageNum, 'append:', append);
+    setRetryParams({ pageNum, append });
+    setRetryCountdown(RETRY_DELAY);
+  }, [retryCountdown, RETRY_DELAY]);
 
   const fetchAllData = async () => {
     try {
@@ -51,11 +148,17 @@ const MainPage: React.FC = () => {
     } else {
       setLoadingMore(true);
     }
-    
+
     try {
       // Simulate network delay for better UX demonstration
       const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-      
+
+      // Simulate server errors with 40% probability
+      if (Math.random() < 0.4) {
+        await delay(1000); // Still show loading for a bit before error
+        throw new Error('Simulated server error');
+      }
+
       let dataToUse = allData;
       if (allData.length === 0) {
         dataToUse = await fetchAllData();
@@ -63,49 +166,63 @@ const MainPage: React.FC = () => {
 
       // Add 1 second delay to simulate slower network
       await delay(1000);
-      
+
       // Calculate pagination
       const startIndex = (pageNum - 1) * ITEMS_PER_PAGE;
       const endIndex = startIndex + ITEMS_PER_PAGE;
       const paginatedData = dataToUse.slice(startIndex, endIndex);
-      
+
       // Check if there are more items
       const hasMoreItems = endIndex < dataToUse.length;
       setHasMore(hasMoreItems);
-      
+
       if (append) {
         setNasaImages(prev => [...prev, ...paginatedData]);
       } else {
         setNasaImages(paginatedData);
       }
     } catch (err) {
-      setError(t('mainPage.errorMessage'));
+      // Start retry countdown without setting error message here
+      // The error message will be handled by the render logic
+      startRetry(pageNum, append);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
   };
 
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
+    if (retryCountdown !== null || isRetryingRef.current) {
+      console.log('LoadMore blocked: retry in progress', { countdown: retryCountdown, isRetrying: isRetryingRef.current });
+      return;
+    }
+    
     if (!loadingMore && hasMore) {
+      console.log('LoadMore executing for page:', page + 1);
       const nextPage = page + 1;
       setPage(nextPage);
       fetchNasaImages(nextPage, true);
     }
-  };
+  }, [loadingMore, hasMore, page, retryCountdown]);
 
   // Infinite scroll detection
   const handleScroll = useCallback(() => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || retryCountdown !== null || isRetryingRef.current) {
+      if (retryCountdown !== null || isRetryingRef.current) {
+        console.log('Scroll blocked: retry in progress', { countdown: retryCountdown, isRetrying: isRetryingRef.current });
+      }
+      return;
+    }
 
     const scrollTop = document.documentElement.scrollTop;
     const scrollHeight = document.documentElement.scrollHeight;
     const clientHeight = document.documentElement.clientHeight;
 
     if (scrollTop + clientHeight >= scrollHeight - 100) {
+      console.log('Scroll triggered loadMore');
       loadMore();
     }
-  }, [loadingMore, hasMore, page]);
+  }, [loadingMore, hasMore, retryCountdown, loadMore]);
 
   useEffect(() => {
     window.addEventListener('scroll', handleScroll);
@@ -117,61 +234,94 @@ const MainPage: React.FC = () => {
   }, []);
 
   const handleReload = () => {
+    // Clear retry state if user manually reloads
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    isRetryingRef.current = false;
+    setRetryCountdown(null);
+    setRetryParams(null);
     setPage(1);
     setHasMore(true);
     fetchNasaImages(1);
+    setAllData([]); // Reset all data to refetch from API
+    setNasaImages([]); // Clear current images to refetch
   };
 
-  if (loading) {
-    return (
-      <Container>
-        <LoadingSpinner message={t('mainPage.loadingMessage')} />
-      </Container>
-    );
-  }
+  const handleSearch = (searchTerm: string) => {
+    setSearchTerm(searchTerm);
+  };
 
-  if (error) {
-    return (
-      <Container>
-        <ErrorMessage message={error} />
-      </Container>
-    );
-  }
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, SEARCH_DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, SEARCH_DEBOUNCE_DELAY]);
+
+  // Handle the actual search when debounced term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== '') {
+      // TODO: Implement actual search functionality here
+      console.log('Executing search for:', debouncedSearchTerm);
+      // Future: API call to search backend
+      // Example: searchImages(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm]);
 
   return (
     <Container>
-      <PageHeader 
-        title={t('mainPage.title')} 
-        subtitle={t('mainPage.subtitle')} 
-      />
-      <ReloadButtonWrapper>
-        <Button onClick={handleReload} disabled={loading}>
-          {loading ? t('common.loading') : t('common.reload')}
-        </Button>
-      </ReloadButtonWrapper>
-      <NasaImagesList nasaImages={nasaImages} />
-      
-      {loadingMore && (
-        <LoadMoreWrapper>
-          <LoadingSpinner message={t('mainPage.loadingMore')} />
-        </LoadMoreWrapper>
-      )}
-      
-      {!loading && hasMore && !loadingMore && (
-        <LoadMoreWrapper>
-          <Button onClick={loadMore}>
-            {t('mainPage.loadMore')}
-          </Button>
-        </LoadMoreWrapper>
-      )}
-      
-      {!hasMore && nasaImages.length > 0 && (
-        <LoadMoreWrapper>
-          <p style={{ opacity: 0.7 }}>{t('mainPage.allLoaded')}</p>
-        </LoadMoreWrapper>
-      )}
-      
-      <ScrollSentinel />
+      <StickyHeader>
+        <PageHeader
+          title={t('mainPage.title')}
+          subtitle={t('mainPage.subtitle')}
+        />
+        <ToolbarWrapper>
+          <ReloadIcon
+            onClick={handleReload}
+            disabled={loading}
+          />
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder={t('mainPage.searchPlaceholder')}
+            disabled={loading}
+          />
+        </ToolbarWrapper>
+      </StickyHeader>
+
+      <ScrollableArea>
+        {loading && nasaImages.length === 0 ? (
+          <LoadingSpinner message={t('mainPage.loadingMessage')} />
+        ) : (
+          <>
+            {nasaImages.length > 0 && <NasaImagesList nasaImages={nasaImages} />}
+
+            {retryCountdown !== null && retryParams && (
+              <ErrorMessage message={t(
+                retryParams.pageNum === 1 ? 'mainPage.retryingIn' : 'mainPage.retryingLoadMore',
+                { seconds: retryCountdown }
+              )} />
+            )}
+
+            {!!error && retryCountdown === null && nasaImages.length === 0 && (
+              <ErrorMessage message={error} />
+            )}
+
+            {nasaImages.length > 0 && retryCountdown === null && !error && (
+              <LoadMoreSection
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                recordsCount={nasaImages.length}
+              />
+            )}
+
+            <ScrollSentinel />
+          </>
+        )}
+      </ScrollableArea>
     </Container>
   );
 };

@@ -3,11 +3,12 @@ import MainPage from './components/MainPage';
 import { LanguageSelector } from './components/common';
 import './i18n'; // Initialize i18n
 import styled from 'styled-components';
+import { colors } from './constants/colors';
 
 const AppContainer = styled.div`
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: ${colors.primary};
   direction: ltr;
   
   * {
