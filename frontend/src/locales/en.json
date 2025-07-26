@@ -3,7 +3,8 @@
     "appTitle": "Nasa Images Explorer",
     "loading": "Loading...",
     "reload": "Reload Images",
-    "viewFullImage": "View Full Image"
+    "viewFullImage": "View Full Image",
+    "back": "Back"
   },
   "mainPage": {
     "title": "NASA Space Images",
@@ -15,7 +16,11 @@
     "allLoaded": "All images loaded!",
     "searchPlaceholder": "Search images...",
     "retryingIn": "Loading failed. Retrying in {{seconds}} seconds...",
-    "retryingLoadMore": "Failed to load more images. Retrying in {{seconds}} seconds..."
+    "retryingLoadMore": "Failed to load more images. Retrying in {{seconds}} seconds...",
+    "reloadButton": "Reload images",
+    "searchButton": "Search",
+    "searchPage": "Search Image Page",
+    "historyButton": "View search history"
   },
   "searchPage": {
     "title": "Search NASA Images",
@@ -24,6 +29,13 @@
   "historyPage": {
     "title": "History",
     "subtitle": "Browse your search history",
-    "comingSoon": "History functionality coming soon!"
+    "comingSoon": "History functionality coming soon!",
+    "confirmDelete": "Are you sure you want to delete this search history?",
+    "deleteRecord": "Delete this search record"
+  },
+  "historyDetailPage": {
+    "title": "Search History Detail",
+    "subtitle": "Viewing search record",
+    "comingSoon": "Detailed history view coming soon!"
   }
 }

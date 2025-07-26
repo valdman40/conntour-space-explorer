@@ -7,33 +7,48 @@ interface SearchBarProps {
   onSearch: (searchTerm: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  isVisible?: boolean;
 }
 
-const SearchContainer = styled.div`
+const SearchContainer = styled.div<{ $isVisible?: boolean }>`
   position: relative;
   width: 100%;
   max-width: ${sizes.layout.maxWidth};
   cursor: default;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease-in-out;
+  opacity: ${props => props.$isVisible === false ? 0 : 1};
+  transform: ${props => props.$isVisible === false 
+    ? 'scale(0.8) translateX(20px)' 
+    : 'scale(1) translateX(0)'
+  };
 
   &:hover {
-    transform: ${sizes.effects.transform.lift};
+    transform: ${props => props.$isVisible === false 
+      ? 'scale(0.8) translateX(20px)' 
+      : sizes.effects.transform.lift
+    };
   }
 
   &:focus-within {
-    transform: ${sizes.effects.transform.lift};
+    transform: ${props => props.$isVisible === false 
+      ? 'scale(0.8) translateX(20px)' 
+      : sizes.effects.transform.lift
+    };
   }
 
   &:active {
-    transform: ${sizes.effects.transform.down};
+    transform: ${props => props.$isVisible === false 
+      ? 'scale(0.8) translateX(20px)' 
+      : sizes.effects.transform.down
+    };
   }
 `;
 
 const SearchInput = styled.input<{ disabled?: boolean }>`
   width: 100%;
-  padding: ${sizes.input.padding};
+  padding: ${sizes.padding.lg};
   border: 2px solid ${colors.interactive.border};
-  border-radius: ${sizes.radius.pill};
+  border-radius: ${sizes.radius.md};
   background: ${colors.interactive.background};
   color: ${colors.text.primary};
   font-size: ${sizes.fontSize.base};
@@ -72,7 +87,8 @@ const SearchIconWrapper = styled.div<{ disabled?: boolean }>`
 export const SearchBar: React.FC<SearchBarProps> = ({ 
   onSearch, 
   placeholder = "Search images...", 
-  disabled = false 
+  disabled = false,
+  isVisible = true
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -94,7 +110,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <SearchContainer>
+    <SearchContainer $isVisible={isVisible}>
       <SearchInput
         type="text"
         value={searchTerm}

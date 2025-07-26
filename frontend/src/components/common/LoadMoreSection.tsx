@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { LoadingSpinner } from './index';
+import { LoadingSpinner } from './LoadingSpinner';
 import { sizes } from '../../constants/sizes';
 
 interface LoadMoreSectionProps {

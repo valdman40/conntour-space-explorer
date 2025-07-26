@@ -1,0 +1,46 @@
+# SVG Icons Configuration
+# This is an example of storing icon data in YAML format
+# While TypeScript/JSON is more common, YAML can be used for configuration
+
+icons:
+  search:
+    viewBox: "0 0 24 24"
+    description: "Search icon with magnifying glass"
+    paths:
+      - "M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z"
+      - "M21 21L16.65 16.65"
+    
+  reload:
+    viewBox: "0 0 24 24"
+    description: "Reload/refresh icon with circular arrows"
+    paths:
+      - "M3 12A9 9 0 0 1 12 3A9.75 9.75 0 0 1 18.74 5.74L21 8"
+      - "M21 3V8H16"
+      - "M21 12A9 9 0 0 1 12 21A9.75 9.75 0 0 1 5.26 18.26L3 16"
+      - "M3 21V16H8"
+    
+  history:
+    viewBox: "0 0 24 24"
+    description: "History/clock icon"
+    paths:
+      - "M3 12A9 9 0 1 0 12 3A9.75 9.75 0 0 0 5.26 5.74L3 8"
+      - "M3 3V8H8"
+      - "M12 7V13L16 15"
+    
+  delete:
+    viewBox: "0 0 24 24"
+    description: "Delete/trash icon"
+    paths:
+      - "M3 6H21"
+      - "M8 6V4A2 2 0 0 1 10 2H14A2 2 0 0 1 16 4V6"
+      - "M19 6V20A2 2 0 0 1 17 22H7A2 2 0 0 1 5 20V6H19Z"
+      - "M10 11V17"
+      - "M14 11V17"
+
+# Default SVG properties
+defaults:
+  fill: "none"
+  stroke: "currentColor"
+  strokeWidth: "2"
+  strokeLinecap: "round"
+  strokeLinejoin: "round"

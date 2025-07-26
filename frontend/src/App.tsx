@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
-import MainPage from './components/MainPage';
-import { LanguageSelector } from './components/common';
+import { AppRouter } from './router/AppRouter';
 import './i18n'; // Initialize i18n
 import styled from 'styled-components';
 import { colors } from './constants/colors';
@@ -26,8 +25,7 @@ const App: React.FC = () => {
 
   return (
     <AppContainer>
-      <LanguageSelector />
-      <MainPage />
+      <AppRouter />
     </AppContainer>
   );
 };
