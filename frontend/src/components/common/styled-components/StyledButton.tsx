@@ -28,15 +28,15 @@ const buttonVariants = {
 
 const buttonSizes = {
   small: css`
-    padding: 0.5rem 1rem;
+    padding: 0.5rem;
     font-size: 0.875rem;
   `,
   medium: css`
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem;
     font-size: 1rem;
   `,
   large: css`
-    padding: 1rem 2rem;
+    padding: 1rem;
     font-size: 1.125rem;
   `
 };

@@ -9,6 +9,7 @@ export const colors = {
     secondary: 'rgba(255, 255, 255, 0.9)',
     muted: 'rgba(255, 255, 255, 0.6)',
     disabled: 'rgba(255, 255, 255, 0.3)',
+    placeholder: 'rgba(255, 255, 255, 0.5)',
   },
   
   // Status colors
@@ -24,6 +25,7 @@ export const colors = {
     backgroundActive: 'rgba(255, 255, 255, 0.2)',
     backgroundButton: 'rgba(255, 255, 255, 0.2)',
     backgroundButtonHover: 'rgba(255, 255, 255, 0.3)',
+    backgroundInput: 'rgba(255, 255, 255, 0.1)',
   },
   
   // Effects

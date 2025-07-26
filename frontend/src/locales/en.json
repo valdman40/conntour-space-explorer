@@ -1,5 +1,6 @@
 {
   "common": {
+    "appTitle": "Nasa Images Explorer",
     "loading": "Loading...",
     "reload": "Reload Images",
     "viewFullImage": "View Full Image"
@@ -15,5 +16,14 @@
     "searchPlaceholder": "Search images...",
     "retryingIn": "Loading failed. Retrying in {{seconds}} seconds...",
     "retryingLoadMore": "Failed to load more images. Retrying in {{seconds}} seconds..."
+  },
+  "searchPage": {
+    "title": "Search NASA Images",
+    "subtitle": "Discover amazing space exploration images and datasets"
+  },
+  "historyPage": {
+    "title": "History",
+    "subtitle": "Browse your search history",
+    "comingSoon": "History functionality coming soon!"
   }
 }
