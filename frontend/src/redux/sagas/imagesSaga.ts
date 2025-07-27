@@ -49,13 +49,15 @@ const fetchImages = async (page: number = 1, limit: number = 20): Promise<{ imag
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const data: ApiImage[] = await response.json();
-    const images = data.map(convertApiImageToNasaImage);
+    const data = await response.json();
+    
+    // Handle new paginated response format
+    const images = data.items.map(convertApiImageToNasaImage);
     
     return {
       images,
-      total: data.length,
-      hasMore: data.length === limit, // If we got fewer than requested, no more pages
+      total: data.returned_count,
+      hasMore: data.has_more, // Use the accurate has_more from backend
     };
   } catch (error) {
     console.error('Error fetching images:', error);

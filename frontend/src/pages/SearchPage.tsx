@@ -61,6 +61,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
         error,
         hasMore,
         searchTerm,
+        page,
         loadImages,
         loadMoreImages,
         searchImages,
@@ -74,14 +75,32 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
 
     const scrollLoadingRef = useRef(false);
 
-    // Load initial images on mount - but respect existing search state
+    // Load initial images on mount - but respect existing search state AND browsing state
     useEffect(() => {
+        console.log('SearchPage mounting/remounting. Current state:', {
+            searchTerm,
+            searchTermTrimmed: searchTerm?.trim(),
+            hasSearchTerm: !!(searchTerm && searchTerm.trim()),
+            imagesCount: images.length,
+            currentPage: page,
+            hasMore
+        });
+        
         // If there's already a search term in Redux state, restore the search results
         if (searchTerm && searchTerm.trim()) {
             console.log('Restoring search results for:', searchTerm);
             searchImages(searchTerm);
+        } else if (images.length > 0 && page >= 1) {
+            // We have existing browsing state - don't reload, just preserve what we have
+            console.log('Preserving existing browsing state:', {
+                imagesCount: images.length,
+                page,
+                hasMore
+            });
+            // Don't call loadImages() - we already have the data
         } else {
-            // Only load all images if there's no existing search
+            // No existing search term and no existing images, load fresh
+            console.log('No existing state, loading fresh images');
             loadImages();
         }
         loadSearchHistory();
@@ -163,6 +182,20 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
     const hasResults = images.length > 0;
     const showNoResults = hasSearched && !hasResults && !loading && !error;
     const showResultsCount = hasSearched && hasResults && !loading;
+    
+    // Only show LoadMoreSection for browsing mode (not search mode)
+    const shouldShowLoadMore = !hasSearched && hasResults && !error;
+    
+    // Debug logging
+    console.log('SearchPage render state:', {
+        searchTerm,
+        hasSearched,
+        hasResults,
+        shouldShowLoadMore,
+        hasMore,
+        loading,
+        error: !!error
+    });
 
     return (
         <SearchPageContainer>
@@ -196,7 +229,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
                     )}
 
                     {/* Show load more section - only for browsing all images, not search results */}
-                    {images.length > 0 && !error && !hasSearched && (
+                    {shouldShowLoadMore && (
                         <LoadMoreSection
                             loadingMore={loading}
                             hasMore={hasMore}

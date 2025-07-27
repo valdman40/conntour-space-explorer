@@ -42,6 +42,15 @@ class PaginatedHistoryResponse(BaseModel):
     has_previous: bool
 
 
+class PaginatedSourcesResponse(BaseModel):
+    items: List[Source]
+    page: int
+    limit: int
+    total_items: int
+    has_more: bool
+    returned_count: int
+
+
 class SearchRequest(BaseModel):
     query: str = Field(
         min_length=1,

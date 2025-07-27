@@ -36,6 +36,15 @@ export const LoadMoreSection: React.FC<LoadMoreSectionProps> = ({
     return null;
   }
 
+  // Add debug logging to understand when "all loaded" appears
+  if (!hasMore && recordsCount > 0) {
+    console.log('LoadMoreSection showing "all loaded" with:', {
+      loadingMore,
+      hasMore,
+      recordsCount
+    });
+  }
+
   return (
     <LoadMoreContainer>
       {loadingMore && (

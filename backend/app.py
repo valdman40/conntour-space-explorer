@@ -6,7 +6,7 @@ from collections import defaultdict
 from data.db import SpaceDB
 from fastapi import FastAPI, HTTPException, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from models import NasaImage, SearchHistoryItem, Source, PaginatedHistoryResponse, SearchRequest, SearchResponse
+from models import NasaImage, SearchHistoryItem, Source, PaginatedHistoryResponse, PaginatedSourcesResponse, SearchRequest, SearchResponse
 from pydantic import BaseModel, ValidationError
 
 app = FastAPI()
@@ -61,14 +61,14 @@ def sanitize_input(text: str) -> str:
     return text.strip()
 
 
-@app.get("/api/sources", response_model=List[Source])
+@app.get("/api/sources", response_model=PaginatedSourcesResponse)
 def get_sources(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     limit: int = Query(20, ge=1, le=100, description="Number of items per page (max 100)")
 ):
     """Get paginated NASA sources/images."""
-    sources = db.get_paginated_sources(page=page, limit=limit)
-    return sources
+    paginated_result = db.get_paginated_sources(page=page, limit=limit)
+    return paginated_result
 
 
 @app.get("/api/history", response_model=PaginatedHistoryResponse)
