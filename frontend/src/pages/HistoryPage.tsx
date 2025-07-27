@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
-import { Button, Icon } from '../components/common';
+import { Button, Icon, LoadingSpinner } from '../components/common';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
+import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
 
 const HistoryContainer = styled.div`
   padding: ${sizes.padding.xl};
@@ -13,6 +14,8 @@ const HistoryContainer = styled.div`
   overflow-y: auto;
   width: 100%;
   min-height: 0;
+  max-width: 1000px; /* Limit overall width */
+  margin: 0 auto; /* Center the container */
 `;
 
 const HistoryRecord = styled.div`
@@ -20,12 +23,14 @@ const HistoryRecord = styled.div`
   padding: ${sizes.padding.lg};
   border-radius: ${sizes.radius.lg};
   margin: ${sizes.margin.md} 0;
+  width: 100%;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: ${sizes.spacing.sm};
+  display: grid;
+  grid-template-columns: 400px 160px 120px auto;
+  gap: ${sizes.spacing.md};
+  align-items: center;
   
   &:hover {
     background: rgba(255, 255, 255, 0.2);
@@ -33,16 +38,25 @@ const HistoryRecord = styled.div`
   }
 `;
 
-const RecordContent = styled.div`
-  flex: 1;
-  pointer-events: none; /* Prevent content from interfering with click */
+const SearchTitle = styled.h3`
+  margin: 0;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.2rem;
+  font-weight: 600;
+`;
+
+const InfoText = styled.p`
+  margin: 0;
+  font-size: 0.9rem;
+  color: ${colors.text.secondary};
 `;
 
 const RecordActions = styled.div`
-  position: absolute;
-  top: ${sizes.padding.md};
-  right: ${sizes.padding.md};
   display: flex;
+  justify-content: flex-end;
   gap: ${sizes.spacing.sm};
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -62,19 +76,26 @@ const ComingSoonMessage = styled.div`
 export const HistoryPage: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const {
+        searchHistory,
+        loading,
+        error,
+        loadSearchHistory,
+        removeSearchTerm
+    } = useReduxSearchHistory();
 
-    // Mock history data - TODO: Replace with actual data from API/storage
-    const initialHistory = [
-        { id: '1', searchTerm: 'mars rover', timestamp: '2024-01-15T10:30:00Z', resultsCount: 24 },
-        { id: '2', searchTerm: 'saturn rings', timestamp: '2024-01-14T15:45:00Z', resultsCount: 18 },
-        { id: '3', searchTerm: 'apollo mission', timestamp: '2024-01-13T09:20:00Z', resultsCount: 32 },
-    ];
-
-    const [historyRecords, setHistoryRecords] = useState(initialHistory);
-
-    const handleBackToSearch = () => {
-        navigate('/search');
+    // Helper function to format date and time
+    const formatDateTime = (timestamp: number) => {
+        const date = new Date(timestamp);
+        const dateStr = date.toLocaleDateString();
+        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `${dateStr} ${timeStr}`;
     };
+
+    // Load search history when component mounts
+    useEffect(() => {
+        loadSearchHistory();
+    }, [loadSearchHistory]);
 
     const handleHistoryRecordClick = (historyId: string) => {
         navigate(`/history/${historyId}`);
@@ -87,24 +108,48 @@ export const HistoryPage: React.FC = () => {
         const confirmDelete = window.confirm(t('historyPage.confirmDelete', 'Are you sure you want to delete this search history?'));
 
         if (confirmDelete) {
-            setHistoryRecords(prev => prev.filter(record => record.id !== recordId));
-            // TODO: Also delete from API/storage
+            // Use the record ID directly for deletion
+            removeSearchTerm(recordId);
         }
     };
 
+    if (loading) {
+        return (
+            <HistoryContainer>
+                <LoadingSpinner />
+            </HistoryContainer>
+        );
+    }
+
+    if (error) {
+        return (
+            <HistoryContainer>
+                <ComingSoonMessage>
+                    Error loading search history: {error}
+                </ComingSoonMessage>
+            </HistoryContainer>
+        );
+    }
+
     return (
         <HistoryContainer>
-            {historyRecords.length > 0 ? (
-                historyRecords.map((record) => (
+            {searchHistory.length > 0 ? (
+                searchHistory.map((record) => (
                     <HistoryRecord
                         key={record.id}
                         onClick={() => handleHistoryRecordClick(record.id)}
                     >
-                        <RecordContent>
-                            <h3>Search: "{record.searchTerm}"</h3>
-                            <p>Date: {new Date(record.timestamp).toLocaleDateString()}</p>
-                            <p>Results: {record.resultsCount} images found</p>
-                        </RecordContent>
+                        <div>
+                            <SearchTitle title={`Search: "${record.query}"`}>
+                                Search: "{record.query}"
+                            </SearchTitle>
+                        </div>
+                        <div>
+                            <InfoText>{formatDateTime(record.timestamp)}</InfoText>
+                        </div>
+                        <div>
+                            <InfoText>{record.resultCount} images</InfoText>
+                        </div>
                         <RecordActions>
                             <Button onClick={(e) => handleDeleteRecord(e, record.id)} title={t('historyPage.deleteRecord')}>
                                 <Icon name="delete" />
@@ -114,7 +159,7 @@ export const HistoryPage: React.FC = () => {
                 ))
             ) : (
                 <ComingSoonMessage>
-                    {t('historyPage.comingSoon')}
+                    {t('historyPage.noHistory', 'No search history yet. Start searching to see your history here!')}
                 </ComingSoonMessage>
             )}
         </HistoryContainer>

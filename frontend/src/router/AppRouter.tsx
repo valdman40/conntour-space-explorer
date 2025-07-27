@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { SearchPage, HistoryPage, HistoryDetailPage } from '../pages';
+import { SearchPage as SearchPageRedux } from '../pages/SearchPageRedux';
 
 export const AppRouter: React.FC = () => {
   return (
@@ -13,6 +14,9 @@ export const AppRouter: React.FC = () => {
           
           {/* Search page route */}
           <Route path="/search" element={<SearchPage />} />
+          
+          {/* Redux Search page route for testing */}
+          <Route path="/search-redux" element={<SearchPageRedux />} />
           
           {/* History routes */}
           <Route path="/history" element={<HistoryPage />} />

@@ -53,3 +53,6 @@ yarn-error.log*
 *.pyc
 .coverage
 htmlcov/ 
+
+# Runtime data files
+backend/data/search_history.json

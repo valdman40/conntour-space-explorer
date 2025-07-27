@@ -121,10 +121,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const isSearchPage = location.pathname === '/search';
+    const isReduxSearchPage = location.pathname === '/search-redux';
     const isHistoryPage = location.pathname === '/history';
     const isHistoryDetailPage = location.pathname.startsWith('/history/');
     const shouldShowToolbar = !isHistoryDetailPage;
-    const shouldShowSearchBar = isSearchPage;
+    const shouldShowSearchBar = isSearchPage || isReduxSearchPage;
     const shouldShowSearchButton = isHistoryPage;
 
     const handleHistoryToggle = () => {
@@ -135,6 +136,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         navigate('/search');
     };
 
+    const handleReduxSearchButtonClick = () => {
+        navigate('/search-redux');
+    };
+
     const handleBackToHistory = () => {
         navigate('/history');
     };
@@ -142,7 +147,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const handleSearch = (searchTerm: string) => {
         setSearchTerm(searchTerm);
         // Navigate to search page if not already there
-        if (!isSearchPage) {
+        if (!isSearchPage && !isReduxSearchPage) {
             navigate('/search');
         }
         console.log('Search triggered from Layout:', searchTerm);
@@ -152,6 +157,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         switch (location.pathname) {
             case '/search':
                 return t('searchPage.subtitle');
+            case '/search-redux':
+                return t('searchPage.subtitle') + ' (Redux)';
             case '/history':
                 return t('historyPage.subtitle');
             default:
@@ -174,6 +181,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <ToolbarWrapper>
                             <Button onClick={handleSearchButtonClick} title={t('mainPage.reloadButton')}>
                                 <Icon name="reload" size="sm" />
+                            </Button>
+                            <Button onClick={handleReduxSearchButtonClick} title="Redux Search" style={{ fontSize: '12px', padding: '4px 8px' }}>
+                                Redux
                             </Button>
                             <SearchAreaWrapper $isCompact={shouldShowSearchButton}>
                                 <SearchBar
