@@ -10,3 +10,4 @@ export { LinkButton } from './LinkButton';
 export { SearchBar } from './SearchBar';
 export { LoadMoreSection } from './LoadMoreSection';
 export { Icon } from './Icon';
+export { Modal } from './Modal';

@@ -97,13 +97,10 @@ export const HistoryDetailPage: React.FC = () => {
         <SearchInfo>
           <SearchTerm>"{historyItem.query}"</SearchTerm>
           <SearchMeta>
-            <p><strong>{t('historyPage.searchLabel')}</strong> {historyItem.query}</p>
-            </SearchMeta>
-            <SearchMeta>
             <p><strong>{t('historyDetailPage.date', 'Date:')}</strong> {new Date(historyItem.timestamp).toLocaleString()}</p>
           </SearchMeta>
         </SearchInfo>
-        
+
         {historyItem.results && historyItem.results.length > 0 && (
           <ResultsSection>
             <h3>{t('historyDetailPage.searchResults', 'Search Results')} ({historyItem.resultCount})</h3>
