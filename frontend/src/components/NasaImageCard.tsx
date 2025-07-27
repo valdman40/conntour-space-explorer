@@ -23,6 +23,9 @@ const Card = styled.div`
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   animation: ${fadeIn} 0.6s ease forwards;
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
   
   &:hover {
     transform: translateY(-5px);
@@ -71,6 +74,7 @@ export const NasaImageCard: React.FC<NasaImageCardProps> = React.memo(({ nasaIma
   const { image_url, name, description, launch_date } = nasaImage;
   return (
     <Card>
+      <div>
       {image_url && (
         <CardImage src={image_url} alt={name} />
       )}
@@ -79,6 +83,7 @@ export const NasaImageCard: React.FC<NasaImageCardProps> = React.memo(({ nasaIma
       <CardDate>
         {launch_date && new Date(launch_date).toLocaleDateString()}
       </CardDate>
+      </div>
       {image_url && (
         <LinkButton href={image_url} target="_blank" rel="noopener noreferrer">
           {t('common.viewFullImage')}

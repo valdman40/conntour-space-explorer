@@ -1,11 +1,12 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
-
-interface HistoryDetailPageProps {}
+import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
+import { NasaImagesList } from '../components/NasaImagesList';
+import { LoadingSpinner, ErrorMessage } from '../components/common';
 
 const HistoryDetailContainer = styled.div`
   padding: ${sizes.padding.xl};
@@ -14,6 +15,8 @@ const HistoryDetailContainer = styled.div`
   overflow-y: auto;
   width: 100%;
   min-height: 0;
+  max-width: 1000px;
+  margin: 0 auto;
 `;
 
 const HistoryRecord = styled.div`
@@ -23,29 +26,91 @@ const HistoryRecord = styled.div`
   margin: ${sizes.margin.lg} 0;
 `;
 
-export const HistoryDetailPage: React.FC<HistoryDetailPageProps> = () => {
+const SearchInfo = styled.div`
+  margin-bottom: ${sizes.margin.lg};
+`;
+
+const SearchTerm = styled.h2`
+  color: ${colors.text.primary};
+  margin-bottom: ${sizes.margin.md};
+`;
+
+const SearchMeta = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: ${sizes.spacing.md};
+  margin-bottom: ${sizes.margin.lg};
+  
+  p {
+    margin: ${sizes.margin.xs} 0;
+    color: ${colors.text.secondary};
+  }
+`;
+
+const ResultsSection = styled.div`
+  margin-top: ${sizes.margin.xl};
+`;
+
+export const HistoryDetailPage: React.FC = () => {
   const { historyId } = useParams<{ historyId: string }>();
   const { t } = useTranslation();
+  const { searchHistory, loading, error } = useReduxSearchHistory();
 
-  // TODO: Fetch actual history record by ID
-  const mockHistoryRecord = {
-    id: historyId,
-    searchTerm: 'mars rover',
-    timestamp: new Date().toISOString(),
-    resultsCount: 24
-  };
+  // Find the specific history item by ID
+  const historyItem = searchHistory.find(item => item.id === historyId);
+
+  // If we don't have the history item and not loading, it might not exist
+  if (!loading && !historyItem) {
+    return (
+      <HistoryDetailContainer>
+        <ErrorMessage message={t('historyDetailPage.notFound', 'History item not found')} />
+      </HistoryDetailContainer>
+    );
+  }
+
+  // Show loading while fetching data
+  if (loading && !historyItem) {
+    return (
+      <HistoryDetailContainer>
+        <LoadingSpinner message={t('common.loading')} />
+      </HistoryDetailContainer>
+    );
+  }
+
+  // Show error if there's an error
+  if (error) {
+    return (
+      <HistoryDetailContainer>
+        <ErrorMessage message={error} />
+      </HistoryDetailContainer>
+    );
+  }
+
+  // If we have the history item, display it
+  if (!historyItem) {
+    return null;
+  }
 
   return (
     <HistoryDetailContainer>
       <HistoryRecord>
-        <h3>Search Record #{historyId}</h3>
-        <p><strong>Search Term:</strong> {mockHistoryRecord.searchTerm}</p>
-        <p><strong>Date:</strong> {new Date(mockHistoryRecord.timestamp).toLocaleDateString()}</p>
-        <p><strong>Results Found:</strong> {mockHistoryRecord.resultsCount}</p>
+        <SearchInfo>
+          <SearchTerm>"{historyItem.query}"</SearchTerm>
+          <SearchMeta>
+            <p><strong>{t('historyPage.searchLabel')}</strong> {historyItem.query}</p>
+            </SearchMeta>
+            <SearchMeta>
+            <p><strong>{t('historyDetailPage.date', 'Date:')}</strong> {new Date(historyItem.timestamp).toLocaleString()}</p>
+          </SearchMeta>
+        </SearchInfo>
+        
+        {historyItem.results && historyItem.results.length > 0 && (
+          <ResultsSection>
+            <h3>{t('historyDetailPage.searchResults', 'Search Results')} ({historyItem.resultCount})</h3>
+            <NasaImagesList nasaImages={historyItem.results} />
+          </ResultsSection>
+        )}
       </HistoryRecord>
-      
-      {/* TODO: Display actual search results from this history record */}
-      <p>{t('historyDetailPage.comingSoon')}</p>
     </HistoryDetailContainer>
   );
 };

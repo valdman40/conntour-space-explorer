@@ -24,7 +24,11 @@
   },
   "searchPage": {
     "title": "Search NASA Images",
-    "subtitle": "Discover amazing space exploration images and datasets"
+    "subtitle": "Discover amazing space exploration images and datasets",
+    "resultsCount": "Found {{count}} results for \"{{query}}\"",
+    "noResults": "No results found for \"{{query}}\"",
+    "searchToStart": "Enter a search term to find NASA images",
+    "allImagesCount": "Showing {{count}} NASA images"
   },
   "historyPage": {
     "title": "History",
@@ -45,6 +49,10 @@
   "historyDetailPage": {
     "title": "Search History Detail",
     "subtitle": "Viewing search record",
-    "comingSoon": "Detailed history view coming soon!"
+    "notFound": "History item not found",
+    "date": "Date:",
+    "resultsFound": "Results Found:",
+    "searchId": "ID:",
+    "searchResults": "Search Results"
   }
 }

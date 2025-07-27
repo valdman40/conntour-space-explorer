@@ -94,31 +94,36 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(searchTerm);
+    if (searchTerm.trim()) {
+      onSearch(searchTerm.trim());
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    onSearch(value); // Trigger search on every keystroke
+    // Trigger search on every keystroke - debouncing will be handled in the saga
+    onSearch(value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      onSearch(searchTerm); // Also trigger on Enter for good UX
+    if (e.key === 'Enter' && searchTerm.trim()) {
+      onSearch(searchTerm.trim());
     }
   };
 
   return (
     <SearchContainer $isVisible={isVisible}>
-      <SearchInput
-        type="text"
-        value={searchTerm}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-      />
+      <form onSubmit={handleSubmit}>
+        <SearchInput
+          type="text"
+          value={searchTerm}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+        />
+      </form>
       <SearchIconWrapper disabled={disabled}>
         <svg
           width={sizes.icon.sm}

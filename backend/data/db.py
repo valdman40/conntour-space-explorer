@@ -62,6 +62,14 @@ class SpaceDB:
         """Get all space sources."""
         return self._sources
 
+    def get_paginated_sources(self, page: int = 1, limit: int = 20) -> List[Dict]:
+        """Get paginated space sources."""
+        # Calculate offset
+        offset = (page - 1) * limit
+        
+        # Return the requested page of sources
+        return self._sources[offset:offset + limit]
+
     def add_search_history_item(self, query: str, results: List[Dict], confidence_scores: Dict[int, float] = None) -> str:
         """Add a new search history item and return its ID."""
         search_id = str(uuid.uuid4())

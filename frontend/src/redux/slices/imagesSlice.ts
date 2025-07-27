@@ -70,6 +70,11 @@ const imagesSlice = createSlice({
       // Reset pagination for search
       state.page = 1;
     },
+    searchImagesDebounced: (state, action: PayloadAction<{ query: string }>) => {
+      // This action will trigger the debounced search saga
+      // Don't set loading state here - let the saga handle it
+      state.searchTerm = action.payload.query;
+    },
     searchImagesSuccess: (state, action: PayloadAction<{ images: NasaImage[]; hasMore: boolean; totalItems: number; isLoadMore?: boolean }>) => {
       state.loading = false;
       if (action.payload.isLoadMore) {
@@ -116,6 +121,7 @@ export const {
   loadMoreImagesSuccess,
   loadMoreImagesFailure,
   searchImagesRequest,
+  searchImagesDebounced,
   searchImagesSuccess,
   searchImagesFailure,
   clearImages,

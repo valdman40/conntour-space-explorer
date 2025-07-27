@@ -1,4 +1,4 @@
-import { call, put, takeEvery, takeLatest, select, delay, fork } from 'redux-saga/effects';
+import { call, put, takeEvery, takeLatest, select, delay, fork, cancel, take } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
 import { NasaImage, SearchHistoryItem } from '../../types';
 import {
@@ -9,6 +9,7 @@ import {
   loadMoreImagesSuccess,
   loadMoreImagesFailure,
   searchImagesRequest,
+  searchImagesDebounced,
   searchImagesSuccess,
   searchImagesFailure,
 } from '../slices/imagesSlice';
@@ -40,9 +41,9 @@ const convertApiImageToNasaImage = (apiImage: ApiImage): NasaImage => ({
 });
 
 // Fetch images from API
-const fetchImages = async (page: number = 1): Promise<{ images: NasaImage[]; total: number }> => {
+const fetchImages = async (page: number = 1, limit: number = 20): Promise<{ images: NasaImage[]; total: number; hasMore: boolean }> => {
   try {
-    const response = await fetch(`/api/sources?page=${page}&limit=20`);
+    const response = await fetch(`/api/sources?page=${page}&limit=${limit}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -53,7 +54,8 @@ const fetchImages = async (page: number = 1): Promise<{ images: NasaImage[]; tot
     
     return {
       images,
-      total: data.length, // For now, assume total is the current page length
+      total: data.length,
+      hasMore: data.length === limit, // If we got fewer than requested, no more pages
     };
   } catch (error) {
     console.error('Error fetching images:', error);
@@ -61,56 +63,34 @@ const fetchImages = async (page: number = 1): Promise<{ images: NasaImage[]; tot
   }
 };
 
-// Search images with confidence scores
+// Search images with confidence scores using real API
 const searchImagesApi = async (query: string): Promise<SearchHistoryItem> => {
   try {
-    // For now, simulate search by filtering the main data
-    // In a real implementation, this would be a separate search endpoint
-    const response = await fetch('/api/sources');
+    const response = await fetch('/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const allData: ApiImage[] = await response.json();
+    const searchResponse = await response.json();
     
-    // Simple search implementation - filter by name, description, or type
-    const filtered = allData.filter(item => 
-      item.name.toLowerCase().includes(query.toLowerCase()) ||
-      item.description.toLowerCase().includes(query.toLowerCase()) ||
-      item.type.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    // Generate confidence scores (in a real app, this would come from the search algorithm)
-    const confidence_scores: { [key: number]: number } = {};
-    filtered.forEach(item => {
-      const nameMatch = item.name.toLowerCase().includes(query.toLowerCase());
-      const descMatch = item.description.toLowerCase().includes(query.toLowerCase());
-      const typeMatch = item.type.toLowerCase().includes(query.toLowerCase());
-      
-      let score = 0;
-      if (nameMatch) score += 0.8;
-      if (descMatch) score += 0.5;
-      if (typeMatch) score += 0.6;
-      
-      confidence_scores[item.id] = Math.min(score, 1.0);
-    });
-    
-    // Sort by confidence score
-    filtered.sort((a, b) => (confidence_scores[b.id] || 0) - (confidence_scores[a.id] || 0));
-    
-    // Convert API images to NasaImages for the history item
-    const convertedImages = filtered.map(convertApiImageToNasaImage);
-    
-    // Create and return the history item directly
-    return {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      query,
-      timestamp: Date.now(),
-      resultCount: filtered.length,
-      results: convertedImages,
-      confidence_scores,
+    // Convert API response to SearchHistoryItem format
+    const searchHistoryItem: SearchHistoryItem = {
+      id: Date.now().toString(), // Generate a temporary ID for the frontend
+      query: searchResponse.query,
+      timestamp: searchResponse.timestamp,
+      resultCount: searchResponse.resultCount,
+      results: searchResponse.results,
+      confidence_scores: searchResponse.confidence_scores,
     };
+    
+    return searchHistoryItem;
   } catch (error) {
     console.error('Error searching images:', error);
     throw error;
@@ -120,10 +100,10 @@ const searchImagesApi = async (query: string): Promise<SearchHistoryItem> => {
 // Worker saga: Load all images
 function* loadImagesSaga(): Generator<any, void, any> {
   try {
-    const response: { images: NasaImage[]; total: number } = yield call(fetchImages, 1);
+    const response: { images: NasaImage[]; total: number; hasMore: boolean } = yield call(fetchImages, 1, 20);
     yield put(loadImagesSuccess({
       images: response.images,
-      hasMore: response.images.length >= 20, // Assume more if we got a full page
+      hasMore: response.hasMore,
       totalItems: response.total,
     }));
   } catch (error) {
@@ -140,10 +120,10 @@ function* loadMoreImagesSaga(): Generator<any, void, any> {
     const currentPage = state.images.page;
     const nextPage = currentPage + 1;
     
-    const response: { images: NasaImage[]; total: number } = yield call(fetchImages, nextPage);
+    const response: { images: NasaImage[]; total: number; hasMore: boolean } = yield call(fetchImages, nextPage, 20);
     yield put(loadMoreImagesSuccess({
       images: response.images,
-      hasMore: response.images.length >= 20, // Assume more if we got a full page
+      hasMore: response.hasMore,
     }));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to load more images';
@@ -155,9 +135,6 @@ function* loadMoreImagesSaga(): Generator<any, void, any> {
 function* searchImagesSaga(action: PayloadAction<{ query: string }>): Generator<any, void, any> {
   try {
     const { query } = action.payload;
-    
-    // Add debouncing - wait 300ms before executing search
-    yield delay(300);
     
     const historyItem: SearchHistoryItem = yield call(searchImagesApi, query);
     
@@ -179,6 +156,26 @@ function* searchImagesSaga(action: PayloadAction<{ query: string }>): Generator<
   }
 }
 
+// Worker saga: Debounced search images
+function* debouncedSearchImagesSaga(action: PayloadAction<{ query: string }>): Generator<any, void, any> {
+  try {
+    const { query } = action.payload;
+    
+    // Add debouncing - wait 500ms before executing search
+    yield delay(500);
+    
+    // If query is empty, load all images (regular page)
+    if (!query.trim()) {
+      yield put(loadImagesRequest());
+    } else {
+      // Dispatch the actual search request
+      yield put(searchImagesRequest({ query: query.trim() }));
+    }
+  } catch (error) {
+    console.error('Debounced search error:', error);
+  }
+}
+
 // Watcher sagas
 function* watchLoadImages() {
   yield takeLatest(loadImagesRequest.type, loadImagesSaga);
@@ -192,9 +189,14 @@ function* watchSearchImages() {
   yield takeLatest(searchImagesRequest.type, searchImagesSaga);
 }
 
+function* watchDebouncedSearchImages() {
+  yield takeLatest(searchImagesDebounced.type, debouncedSearchImagesSaga);
+}
+
 // Root saga
 export default function* imagesSaga() {
   yield fork(watchLoadImages);
   yield fork(watchLoadMoreImages);
   yield fork(watchSearchImages);
+  yield fork(watchDebouncedSearchImages);
 }

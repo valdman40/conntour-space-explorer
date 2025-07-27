@@ -9,8 +9,8 @@ import {
 import { NasaImagesList } from '../components/NasaImagesList';
 import { useReduxImages } from '../hooks/useReduxImages';
 import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
-import { NasaImage } from '../types';
 import { sizes } from '../constants/sizes';
+import { colors } from '../constants/colors';
 
 const fadeIn = keyframes`
   from {
@@ -27,11 +27,23 @@ const SearchPageContainer = styled.div`
   animation: ${fadeIn} 0.3s ease-in-out;
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 `;
 
 const ScrollSentinel = styled.div`
   height: ${sizes.spacing.xl};
   margin: ${sizes.margin.md} 0;
+`;
+
+const SearchResultsInfo = styled.div`
+  padding: ${sizes.padding.md} 0;
+  text-align: center;
+  color: ${colors.text.secondary};
+  font-size: ${sizes.fontSize.sm};
+  margin-bottom: ${sizes.margin.md};
 `;
 
 interface SearchPageProps {
@@ -41,7 +53,7 @@ interface SearchPageProps {
 
 export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: externalSearchTerm }) => {
     const { t } = useTranslation();
-    
+
     // Redux hooks
     const {
         images,
@@ -55,9 +67,8 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
         clearImages,
         setSearchTerm
     } = useReduxImages();
-    
+
     const {
-        addSearchTerm,
         loadSearchHistory
     } = useReduxSearchHistory();
 
@@ -67,7 +78,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
     useEffect(() => {
         loadImages();
         loadSearchHistory();
-    }, [loadImages, loadSearchHistory]);
+    }, []);
 
     // Update search term when external prop changes
     useEffect(() => {
@@ -77,11 +88,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
                 searchImages(externalSearchTerm);
             }
         }
-    }, [externalSearchTerm, searchTerm, setSearchTerm, searchImages]);
-
-    // Handle load more
+    }, [externalSearchTerm, searchTerm]);    // Handle load more
     const loadMore = useCallback(() => {
-        if (!loading && hasMore && !scrollLoadingRef.current) {
+        // Only allow load more if we're not in search mode
+        const isSearchMode = searchTerm && searchTerm.trim().length > 0;
+        
+        if (!loading && hasMore && !scrollLoadingRef.current && !isSearchMode) {
             scrollLoadingRef.current = true;
             loadMoreImages();
             
@@ -90,11 +102,14 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
                 scrollLoadingRef.current = false;
             }, 1000);
         }
-    }, [loading, hasMore, loadMoreImages]);
+    }, [loading, hasMore, searchTerm]);
 
     // Infinite scroll handler
     const handleScroll = useCallback(() => {
-        if (scrollLoadingRef.current || !hasMore || loading) {
+        // Only allow infinite scroll if we're not in search mode
+        const isSearchMode = searchTerm && searchTerm.trim().length > 0;
+        
+        if (scrollLoadingRef.current || !hasMore || loading || isSearchMode) {
             return;
         }
 
@@ -105,7 +120,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
         if (scrollTop + clientHeight >= scrollHeight - 100) {
             loadMore();
         }
-    }, [loading, hasMore, loadMore]);
+    }, [loading, hasMore, loadMore, searchTerm]);
 
     useEffect(() => {
         window.addEventListener('scroll', handleScroll);
@@ -130,11 +145,17 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
         if (searchQuery.trim()) {
             setSearchTerm(searchQuery);
             searchImages(searchQuery);
-            
+
             // Save to search history after successful search
             // This will be handled by the saga when search is successful
         }
     }, [setSearchTerm, searchImages]);
+
+    // Determine if a search has been performed
+    const hasSearched = searchTerm && searchTerm.trim().length > 0;
+    const hasResults = images.length > 0;
+    const showNoResults = hasSearched && !hasResults && !loading && !error;
+    const showResultsCount = hasSearched && hasResults && !loading;
 
     return (
         <SearchPageContainer>
@@ -142,13 +163,33 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
                 <LoadingSpinner message={t('mainPage.loadingMessage')} />
             ) : (
                 <>
+                    {/* Show search results count */}
+                    {showResultsCount && (
+                        <SearchResultsInfo>
+                            {t('searchPage.resultsCount', {
+                                count: images.length,
+                                query: searchTerm
+                            })}
+                        </SearchResultsInfo>
+                    )}
+
+                    {/* Show no results message */}
+                    {showNoResults && (
+                        <SearchResultsInfo>
+                            {t('searchPage.noResults', { query: searchTerm })}
+                        </SearchResultsInfo>
+                    )}
+
+                    {/* Show images if available */}
                     {images.length > 0 && <NasaImagesList nasaImages={images} />}
 
+                    {/* Show error message */}
                     {!!error && images.length === 0 && (
                         <ErrorMessage message={error} />
                     )}
 
-                    {images.length > 0 && !error && (
+                    {/* Show load more section - only for browsing all images, not search results */}
+                    {images.length > 0 && !error && !hasSearched && (
                         <LoadMoreSection
                             loadingMore={loading}
                             hasMore={hasMore}

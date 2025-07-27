@@ -10,6 +10,7 @@ import { Icon } from './common/Icon';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
 import { Button } from './common';
+import { useReduxImages } from '../hooks/useReduxImages';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -119,6 +120,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Redux hooks for search functionality
+    const { searchImagesDebounced } = useReduxImages();
 
     const isSearchPage = location.pathname === '/search';
     const isReduxSearchPage = location.pathname === '/search-redux';
@@ -146,7 +150,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         if (!isSearchPage && !isReduxSearchPage) {
             navigate('/search');
         }
-        console.log('Search triggered from Layout:', searchTerm);
+        
+        // Always trigger the debounced search (handles both search and clear)
+        searchImagesDebounced(searchTerm);
+        console.log('Debounced search triggered from Layout:', searchTerm || '(empty - will load all images)');
     };
 
     const getSubtitle = () => {

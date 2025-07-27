@@ -4,6 +4,7 @@ import {
   loadImagesRequest, 
   loadMoreImagesRequest, 
   searchImagesRequest, 
+  searchImagesDebounced,
   clearImages,
   setSearchTerm 
 } from '../redux/slices/imagesSlice';
@@ -32,6 +33,11 @@ export const useReduxImages = () => {
     dispatch(searchImagesRequest({ query }));
   }, [dispatch]);
 
+  const handleSearchImagesDebounced = useCallback((query: string) => {
+    dispatch(setSearchTerm(query));
+    dispatch(searchImagesDebounced({ query }));
+  }, [dispatch]);
+
   const handleClearImages = useCallback(() => {
     dispatch(clearImages());
   }, [dispatch]);
@@ -53,6 +59,7 @@ export const useReduxImages = () => {
     loadImages: handleLoadImages,
     loadMoreImages: handleLoadMoreImages,
     searchImages: handleSearchImages,
+    searchImagesDebounced: handleSearchImagesDebounced,
     clearImages: handleClearImages,
     setSearchTerm: handleSetSearchTerm,
   };

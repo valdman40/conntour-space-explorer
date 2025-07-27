@@ -62,9 +62,12 @@ def sanitize_input(text: str) -> str:
 
 
 @app.get("/api/sources", response_model=List[Source])
-def get_sources():
-    """Get all available NASA sources/images."""
-    sources = db.get_all_sources()
+def get_sources(
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items per page (max 100)")
+):
+    """Get paginated NASA sources/images."""
+    sources = db.get_paginated_sources(page=page, limit=limit)
     return sources
 
 
