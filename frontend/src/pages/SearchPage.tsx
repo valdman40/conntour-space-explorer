@@ -74,9 +74,16 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
 
     const scrollLoadingRef = useRef(false);
 
-    // Load initial images on mount
+    // Load initial images on mount - but respect existing search state
     useEffect(() => {
-        loadImages();
+        // If there's already a search term in Redux state, restore the search results
+        if (searchTerm && searchTerm.trim()) {
+            console.log('Restoring search results for:', searchTerm);
+            searchImages(searchTerm);
+        } else {
+            // Only load all images if there's no existing search
+            loadImages();
+        }
         loadSearchHistory();
     }, []);
 

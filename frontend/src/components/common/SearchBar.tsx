@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors } from '../../constants/colors';
 import { sizes } from '../../constants/sizes';
@@ -8,6 +8,7 @@ interface SearchBarProps {
   placeholder?: string;
   disabled?: boolean;
   isVisible?: boolean;
+  value?: string; // Add external value prop
 }
 
 const SearchContainer = styled.div<{ $isVisible?: boolean }>`
@@ -88,9 +89,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch, 
   placeholder = "Search images...", 
   disabled = false,
-  isVisible = true
+  isVisible = true,
+  value = ""
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(value);
+
+  // Sync with external value changes
+  useEffect(() => {
+    if (value !== searchTerm) {
+      setSearchTerm(value);
+    }
+  }, [value]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

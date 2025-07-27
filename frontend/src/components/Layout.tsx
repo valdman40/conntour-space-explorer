@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -119,10 +119,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const location = useLocation();
-    const [searchTerm, setSearchTerm] = useState('');
     
     // Redux hooks for search functionality
-    const { searchImagesDebounced } = useReduxImages();
+    const { searchImagesDebounced, searchTerm: reduxSearchTerm } = useReduxImages();
+    const [localSearchTerm, setLocalSearchTerm] = useState('');
+
+    // Sync local search term with Redux state when Redux state changes
+    useEffect(() => {
+        if (reduxSearchTerm !== localSearchTerm) {
+            setLocalSearchTerm(reduxSearchTerm);
+        }
+    }, [reduxSearchTerm]);
 
     const isSearchPage = location.pathname === '/search';
     const isReduxSearchPage = location.pathname === '/search-redux';
@@ -145,7 +152,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
 
     const handleSearch = (searchTerm: string) => {
-        setSearchTerm(searchTerm);
+        setLocalSearchTerm(searchTerm);
         // Navigate to search page if not already there
         if (!isSearchPage && !isReduxSearchPage) {
             navigate('/search');
@@ -191,6 +198,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     placeholder={t('mainPage.searchPlaceholder')}
                                     disabled={false}
                                     isVisible={shouldShowSearchBar}
+                                    value={reduxSearchTerm}
                                 />
                                 <CompactSearchButton 
                                     $isVisible={shouldShowSearchButton}
