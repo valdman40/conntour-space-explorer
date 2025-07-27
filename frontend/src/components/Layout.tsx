@@ -136,10 +136,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         navigate('/search');
     };
 
-    const handleReduxSearchButtonClick = () => {
-        navigate('/search-redux');
-    };
-
     const handleBackToHistory = () => {
         navigate('/history');
     };
@@ -179,12 +175,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     />
                     {shouldShowToolbar && (
                         <ToolbarWrapper>
-                            <Button onClick={handleSearchButtonClick} title={t('mainPage.reloadButton')}>
+                            {/* <Button onClick={handleSearchButtonClick} title={t('mainPage.reloadButton')}>
                                 <Icon name="reload" size="sm" />
-                            </Button>
-                            <Button onClick={handleReduxSearchButtonClick} title="Redux Search" style={{ fontSize: '12px', padding: '4px 8px' }}>
-                                Redux
-                            </Button>
+                            </Button> */}
                             <SearchAreaWrapper $isCompact={shouldShowSearchButton}>
                                 <SearchBar
                                     onSearch={handleSearch}

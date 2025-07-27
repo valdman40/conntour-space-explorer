@@ -1,7 +1,7 @@
 import { call, put, takeEvery, fork } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { SearchHistoryItem } from '../../types';
+import { SearchHistoryItem, PaginatedHistoryResponse } from '../../types';
 import {
   addSearchToHistoryRequest,
   addSearchToHistorySuccess,
@@ -24,9 +24,9 @@ const HISTORY_STORAGE_KEY = 'nasa-space-explorer-history';
 const API_BASE_URL = 'http://localhost:5000';
 
 // API helper functions
-async function loadHistoryFromAPI(): Promise<SearchHistoryItem[]> {
+async function loadHistoryFromAPI(page: number = 1, pageSize: number = 100): Promise<PaginatedHistoryResponse> {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/history`);
+    const response = await axios.get(`${API_BASE_URL}/api/history?page=${page}&page_size=${pageSize}`);
     return response.data;
   } catch (error) {
     console.error('Failed to load history from API:', error);
@@ -116,12 +116,25 @@ function* clearHistorySaga() {
 }
 
 // Worker saga: Load history
-function* loadHistorySaga() {
+function* loadHistorySaga(action: PayloadAction<{ page?: number; pageSize?: number }> = { type: '', payload: {} }) {
   try {
     console.log('Loading history from API...');
-    const history: SearchHistoryItem[] = yield call(loadHistoryFromAPI);
-    console.log('History loaded successfully:', history);
-    yield put(loadHistorySuccess(history));
+    const { page = 1, pageSize = 100 } = action.payload || {};
+    const response: PaginatedHistoryResponse = yield call(loadHistoryFromAPI, page, pageSize);
+    console.log('History loaded successfully:', response);
+    
+    // Map backend response to frontend format
+    const paginatedResponse: PaginatedHistoryResponse = {
+      items: response.items,
+      page: response.page,
+      page_size: response.page_size,
+      total_items: response.total_items,
+      total_pages: response.total_pages,
+      has_next: response.has_next,
+      has_previous: response.has_previous
+    };
+    
+    yield put(loadHistorySuccess(paginatedResponse));
   } catch (error) {
     console.error('Error loading history:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to load history';

@@ -14,15 +14,16 @@ export const useReduxSearchHistory = () => {
   const searchHistory = useAppSelector(state => state.history.searchHistory);
   const loading = useAppSelector(state => state.history.loading);
   const error = useAppSelector(state => state.history.error);
+  const pagination = useAppSelector(state => state.history.pagination);
 
   const handleAddSearchTerm = useCallback((searchItem: SearchHistoryItem) => {
     dispatch(addSearchToHistoryRequest(searchItem));
   }, [dispatch]);
 
-  const handleLoadSearchHistory = useCallback(() => {
-    console.log('Dispatching loadHistoryRequest action');
+  const handleLoadSearchHistory = useCallback((page?: number, pageSize?: number) => {
+    console.log('Dispatching loadHistoryRequest action', { page, pageSize });
     console.log('Action type:', loadHistoryRequest.type);
-    dispatch(loadHistoryRequest());
+    dispatch(loadHistoryRequest({ page, pageSize }));
   }, [dispatch]);
 
   const handleClearSearchHistory = useCallback(() => {
@@ -39,6 +40,7 @@ export const useReduxSearchHistory = () => {
     searchHistory: [...searchHistory].sort((a, b) => b.timestamp - a.timestamp),
     loading,
     error,
+    pagination,
     
     // Actions
     addSearchTerm: handleAddSearchTerm,

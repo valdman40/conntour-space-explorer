@@ -1,12 +1,20 @@
 from typing import List, Optional
+import time
+import re
+from collections import defaultdict
 
 from data.db import SpaceDB
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from models import NasaImage, SearchHistoryItem, Source
-from pydantic import BaseModel
+from models import NasaImage, SearchHistoryItem, Source, PaginatedHistoryResponse, SearchRequest, SearchResponse
+from pydantic import BaseModel, ValidationError
 
 app = FastAPI()
+
+# Rate limiting storage (in production, use Redis or similar)
+request_counts = defaultdict(list)
+RATE_LIMIT_REQUESTS = 100  # requests per minute
+RATE_LIMIT_WINDOW = 60  # seconds
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,17 +27,38 @@ app.add_middleware(
 db = SpaceDB()
 
 
-# Request/Response models for search
-class SearchRequest(BaseModel):
-    query: str
+def check_rate_limit(client_ip: str):
+    """Check if client has exceeded rate limit."""
+    current_time = time.time()
+    client_requests = request_counts[client_ip]
+    
+    # Remove old requests outside the window
+    client_requests[:] = [req_time for req_time in client_requests 
+                         if current_time - req_time < RATE_LIMIT_WINDOW]
+    
+    # Check if limit exceeded
+    if len(client_requests) >= RATE_LIMIT_REQUESTS:
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Rate limit exceeded. Max {RATE_LIMIT_REQUESTS} requests per minute."
+        )
+    
+    # Add current request
+    client_requests.append(current_time)
 
 
-class SearchResponse(BaseModel):
-    query: str
-    results: List[NasaImage]
-    confidence_scores: dict[int, float]
-    timestamp: int
-    resultCount: int
+def sanitize_input(text: str) -> str:
+    """Additional input sanitization."""
+    if not text:
+        return ""
+    
+    # Remove null bytes and control characters
+    text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+    
+    # Limit length
+    text = text[:1000]
+    
+    return text.strip()
 
 
 @app.get("/api/sources", response_model=List[Source])
@@ -39,70 +68,126 @@ def get_sources():
     return sources
 
 
-@app.get("/api/history", response_model=List[SearchHistoryItem])
-def get_search_history(authorization: Optional[str] = Header(None)):
+@app.get("/api/history", response_model=PaginatedHistoryResponse)
+def get_search_history(
+    request: Request,
+    page: int = Query(1, ge=1, le=10000, description="Page number (starts from 1, max 10000)"),
+    page_size: int = Query(100, ge=1, le=100, description="Number of items per page (max 100)"),
+    authorization: Optional[str] = Header(None)
+):
     """
-    Get search history for the current user.
+    Get paginated search history for the current user.
     
     In the future, this will be filtered by user ID extracted from JWT token.
     For now, returns all search history since authentication is not yet implemented.
     """
+    # Rate limiting
+    client_ip = request.client.host
+    check_rate_limit(client_ip)
+    
     # TODO: Extract user_id from JWT token when authentication is implemented
     # Example: user_id = extract_user_from_jwt(authorization)
     user_id = None  # Placeholder for future authentication
     
-    history = db.get_search_history(user_id)
-    return history
+    try:
+        paginated_history = db.get_search_history_paginated(user_id, page, page_size)
+        return paginated_history
+    except Exception as e:
+        # Log the error in production
+        raise HTTPException(status_code=500, detail="Failed to retrieve search history")
 
 
 @app.post("/api/search", response_model=SearchResponse)
-def search_images(search_request: SearchRequest, authorization: Optional[str] = Header(None)):
+def search_images(search_request: SearchRequest, request: Request, authorization: Optional[str] = Header(None)):
     """
     Search through NASA images using natural language query.
     Automatically saves search to history.
     """
-    query = search_request.query.strip()
+    # Rate limiting
+    client_ip = request.client.host
+    check_rate_limit(client_ip)
+    
+    # Additional sanitization (Pydantic validation already applied)
+    query = sanitize_input(search_request.query)
+    
     if not query:
         raise HTTPException(status_code=400, detail="Query cannot be empty")
     
-    # Perform search
-    results, confidence_scores = db.search_sources(query)
+    # Additional security checks
+    if len(query) > 500:
+        raise HTTPException(status_code=400, detail="Query too long (max 500 characters)")
     
-    # Convert results to NasaImage format
-    nasa_images = [NasaImage(**result) for result in results]
+    # Check for SQL injection patterns (even though we're not using SQL)
+    sql_patterns = [
+        r'\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b',
+        r'--',
+        r'/\*.*?\*/',
+        r'\b(or|and)\s+\d+\s*=\s*\d+',
+    ]
     
-    # Save to search history
-    # TODO: Extract user_id from JWT token when authentication is implemented
-    user_id = None  # Placeholder for future authentication
+    for pattern in sql_patterns:
+        if re.search(pattern, query.lower()):
+            raise HTTPException(status_code=400, detail="Query contains potentially malicious patterns")
     
-    timestamp = int(__import__('time').time() * 1000)
-    search_id = db.add_search_history_item(
-        query=query,
-        results=results,
-        confidence_scores=confidence_scores
-    )
+    try:
+        # Perform search
+        results, confidence_scores = db.search_sources(query)
+        
+        # Convert results to NasaImage format
+        nasa_images = [NasaImage(**result) for result in results]
+        
+        # Save to search history
+        # TODO: Extract user_id from JWT token when authentication is implemented
+        user_id = None  # Placeholder for future authentication
+        
+        timestamp = int(__import__('time').time() * 1000)
+        search_id = db.add_search_history_item(
+            query=query,
+            results=results,
+            confidence_scores=confidence_scores
+        )
+        
+        return SearchResponse(
+            query=query,
+            results=nasa_images,
+            confidence_scores=confidence_scores,
+            timestamp=timestamp,
+            resultCount=len(nasa_images)
+        )
     
-    return SearchResponse(
-        query=query,
-        results=nasa_images,
-        confidence_scores=confidence_scores,
-        timestamp=timestamp,
-        resultCount=len(nasa_images)
-    )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Validation error: {e}")
+    except Exception as e:
+        # Log the error in production
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.delete("/api/history/{search_id}")
-def delete_search_history_item(search_id: str, authorization: Optional[str] = Header(None)):
+def delete_search_history_item(search_id: str, request: Request, authorization: Optional[str] = Header(None)):
     """
     Delete a specific search history item.
     
     In the future, this will validate that the user owns this search history item.
     """
+    # Rate limiting
+    client_ip = request.client.host
+    check_rate_limit(client_ip)
+    
+    # Validate search_id format (UUID)
+    if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', search_id.lower()):
+        raise HTTPException(status_code=400, detail="Invalid search ID format")
+    
     # TODO: Extract user_id from JWT token and validate ownership
     user_id = None  # Placeholder for future authentication
     
-    success = db.delete_search_history_item(search_id, user_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Search history item not found")
-    
-    return {"message": "Search history item deleted successfully"}
+    try:
+        success = db.delete_search_history_item(search_id, user_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Search history item not found")
+        
+        return {"message": "Search history item deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the error in production
+        raise HTTPException(status_code=500, detail="Failed to delete search history item")

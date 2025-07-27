@@ -1,11 +1,19 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { SearchHistoryItem } from '../../types';
+import { SearchHistoryItem, PaginatedHistoryResponse } from '../../types';
 
 // State interface
 export interface HistoryState {
   searchHistory: SearchHistoryItem[];
   loading: boolean;
   error: string | null;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
 }
 
 // Initial state
@@ -13,6 +21,14 @@ const initialState: HistoryState = {
   searchHistory: [],
   loading: false,
   error: null,
+  pagination: {
+    page: 1,
+    pageSize: 100,
+    totalItems: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false,
+  },
 };
 
 // Redux slice
@@ -69,14 +85,21 @@ const historySlice = createSlice({
     },
 
     // Load history (for persistence)
-    loadHistoryRequest: (state) => {
+    loadHistoryRequest: (state, action: PayloadAction<{ page?: number; pageSize?: number }>) => {
       state.loading = true;
       state.error = null;
     },
-    loadHistorySuccess: (state, action: PayloadAction<SearchHistoryItem[]>) => {
+    loadHistorySuccess: (state, action: PayloadAction<PaginatedHistoryResponse>) => {
       state.loading = false;
-      // Sort history by timestamp in descending order (latest first)
-      state.searchHistory = action.payload.sort((a, b) => b.timestamp - a.timestamp);
+      state.searchHistory = action.payload.items;
+      state.pagination = {
+        page: action.payload.page,
+        pageSize: action.payload.page_size,
+        totalItems: action.payload.total_items,
+        totalPages: action.payload.total_pages,
+        hasNext: action.payload.has_next,
+        hasPrevious: action.payload.has_previous,
+      };
       state.error = null;
     },
     loadHistoryFailure: (state, action: PayloadAction<string>) => {

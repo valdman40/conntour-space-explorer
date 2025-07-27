@@ -1,11 +1,22 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { Button, Icon, LoadingSpinner } from '../components/common';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
 import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
+
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 const HistoryContainer = styled.div`
   padding: ${sizes.padding.xl};
@@ -16,6 +27,9 @@ const HistoryContainer = styled.div`
   min-height: 0;
   max-width: 1000px; /* Limit overall width */
   margin: 0 auto; /* Center the container */
+  display: flex;
+  flex-direction: column;
+  animation: ${fadeIn} 0.3s ease-in-out;
 `;
 
 const HistoryRecord = styled.div`
@@ -66,11 +80,56 @@ const RecordActions = styled.div`
   }
 `;
 
-const ComingSoonMessage = styled.div`
-  text-align: center;
-  padding: ${sizes.padding.xl};
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: ${sizes.margin.md};
+  margin-top: ${sizes.margin.xl};
+  padding: ${sizes.padding.lg};
+`;
+
+const PaginationButton = styled(Button)<{ disabled?: boolean }>`
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  
+  &:hover {
+    opacity: ${props => props.disabled ? 0.5 : 0.8};
+  }
+`;
+
+const PageInfo = styled.span`
   color: ${colors.text.secondary};
-  font-style: italic;
+  font-size: ${sizes.fontSize.sm};
+  margin: 0 ${sizes.margin.md};
+`;
+
+const HistoryContent = styled.div`
+  flex: 1;
+`;
+
+const HistoryHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${sizes.margin.lg};
+  padding-bottom: ${sizes.padding.md};
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const TotalCounter = styled.div`
+  color: ${colors.text.secondary};
+  font-size: ${sizes.fontSize.sm};
+  font-weight: 600;
+`;
+
+// Styled component for error message
+const ErrorMessage = styled.div`
+    text-align: center;
+    color: ${colors.text.secondary};
+    font-size: 1.1rem;
+    padding: 2rem;
+    font-style: italic;
 `;
 
 export const HistoryPage: React.FC = () => {
@@ -80,6 +139,7 @@ export const HistoryPage: React.FC = () => {
         searchHistory,
         loading,
         error,
+        pagination,
         loadSearchHistory,
         removeSearchTerm
     } = useReduxSearchHistory();
@@ -94,8 +154,12 @@ export const HistoryPage: React.FC = () => {
 
     // Load search history when component mounts
     useEffect(() => {
-        loadSearchHistory();
+        loadSearchHistory(1, 100); // Load first page with 100 items
     }, [loadSearchHistory]);
+
+    const handlePageChange = (newPage: number) => {
+        loadSearchHistory(newPage, pagination.pageSize);
+    };
 
     const handleHistoryRecordClick = (historyId: string) => {
         navigate(`/history/${historyId}`);
@@ -104,8 +168,7 @@ export const HistoryPage: React.FC = () => {
     const handleDeleteRecord = (e: React.MouseEvent, recordId: string) => {
         e.stopPropagation(); // Prevent record click when deleting
 
-        // TODO: Add confirmation dialog
-        const confirmDelete = window.confirm(t('historyPage.confirmDelete', 'Are you sure you want to delete this search history?'));
+        const confirmDelete = window.confirm(t('historyPage.confirmDelete'));
 
         if (confirmDelete) {
             // Use the record ID directly for deletion
@@ -113,7 +176,7 @@ export const HistoryPage: React.FC = () => {
         }
     };
 
-    if (loading) {
+    if (loading && !searchHistory.length) {
         return (
             <HistoryContainer>
                 <LoadingSpinner />
@@ -124,43 +187,119 @@ export const HistoryPage: React.FC = () => {
     if (error) {
         return (
             <HistoryContainer>
-                <ComingSoonMessage>
-                    Error loading search history: {error}
-                </ComingSoonMessage>
+                <ErrorMessage>
+                    {t('historyPage.errorLoading')} {error}
+                </ErrorMessage>
             </HistoryContainer>
         );
     }
 
     return (
         <HistoryContainer>
-            {searchHistory.length > 0 ? (
-                searchHistory.map((record) => (
-                    <HistoryRecord
-                        key={record.id}
-                        onClick={() => handleHistoryRecordClick(record.id)}
+            <HistoryHeader>
+                <TotalCounter>
+                    {pagination.totalItems > 0 
+                        ? t('historyPage.totalItems', { 
+                            count: pagination.totalItems
+                          })
+                        : t('historyPage.noItems', 'No items')
+                    }
+                </TotalCounter>
+                
+                {/* Pagination Controls at the top */}
+                {pagination.totalPages > 1 && (
+                    <PaginationContainer style={{ margin: 0, padding: 0 }}>
+                        <PaginationButton
+                            disabled={!pagination.hasPrevious}
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            title={t('historyPage.previousPage', 'Previous Page')}
+                        >
+                            <Icon name="arrow_back" />
+                        </PaginationButton>
+                        
+                        <PageInfo>
+                            {t('historyPage.pageInfo', {
+                                current: pagination.page,
+                                total: pagination.totalPages,
+                                defaultValue: `Page ${pagination.page} of ${pagination.totalPages}`
+                            })}
+                        </PageInfo>
+                        
+                        <PaginationButton
+                            disabled={!pagination.hasNext}
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            title={t('historyPage.nextPage', 'Next Page')}
+                        >
+                            <Icon name="arrow_forward" />
+                        </PaginationButton>
+                    </PaginationContainer>
+                )}
+            </HistoryHeader>
+            
+            <HistoryContent>
+                {searchHistory.length > 0 ? (
+                    searchHistory.map((record) => (
+                        <HistoryRecord
+                            key={record.id}
+                            onClick={() => handleHistoryRecordClick(record.id)}
+                        >
+                            <div>
+                                <SearchTitle title={`${t('historyPage.searchLabel')} "${record.query}"`}>
+                                    {t('historyPage.searchLabel')} "{record.query}"
+                                </SearchTitle>
+                            </div>
+                            <div>
+                                <InfoText>{formatDateTime(record.timestamp)}</InfoText>
+                            </div>
+                            <div>
+                                <InfoText>{record.resultCount} {t('historyPage.imagesLabel')}</InfoText>
+                            </div>
+                            <RecordActions>
+                                <Button onClick={(e) => handleDeleteRecord(e, record.id)} title={t('historyPage.deleteRecord')}>
+                                    <Icon name="delete" />
+                                </Button>
+                            </RecordActions>
+                        </HistoryRecord>
+                    ))
+                ) : (
+                    <div style={{ 
+                        textAlign: 'center', 
+                        padding: '2rem', 
+                        color: '#888', 
+                        fontStyle: 'italic' 
+                    }}>
+                        {t('historyPage.noHistory')}
+                    </div>
+                )}
+            </HistoryContent>
+            
+            {/* Bottom Pagination Controls (optional - can be removed if not needed) */}
+            {pagination.totalPages > 1 && (
+                <PaginationContainer>
+                    <PaginationButton
+                        disabled={!pagination.hasPrevious}
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        title={t('historyPage.previousPage', 'Previous Page')}
                     >
-                        <div>
-                            <SearchTitle title={`Search: "${record.query}"`}>
-                                Search: "{record.query}"
-                            </SearchTitle>
-                        </div>
-                        <div>
-                            <InfoText>{formatDateTime(record.timestamp)}</InfoText>
-                        </div>
-                        <div>
-                            <InfoText>{record.resultCount} images</InfoText>
-                        </div>
-                        <RecordActions>
-                            <Button onClick={(e) => handleDeleteRecord(e, record.id)} title={t('historyPage.deleteRecord')}>
-                                <Icon name="delete" />
-                            </Button>
-                        </RecordActions>
-                    </HistoryRecord>
-                ))
-            ) : (
-                <ComingSoonMessage>
-                    {t('historyPage.noHistory', 'No search history yet. Start searching to see your history here!')}
-                </ComingSoonMessage>
+                        <Icon name="arrow_back" />
+                    </PaginationButton>
+                    
+                    <PageInfo>
+                        {t('historyPage.pageInfo', {
+                            current: pagination.page,
+                            total: pagination.totalPages,
+                            defaultValue: `Page ${pagination.page} of ${pagination.totalPages}`
+                        })}
+                    </PageInfo>
+                    
+                    <PaginationButton
+                        disabled={!pagination.hasNext}
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        title={t('historyPage.nextPage', 'Next Page')}
+                    >
+                        <Icon name="arrow_forward" />
+                    </PaginationButton>
+                </PaginationContainer>
             )}
         </HistoryContainer>
     );

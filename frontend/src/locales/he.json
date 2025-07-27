@@ -31,7 +31,16 @@
     "subtitle": "עיון בהיסטוריית החיפושים שלך",
     "comingSoon": "פונקציונליות היסטוריה בקרוב!",
     "confirmDelete": "האם אתה בטוח שברצונך למחוק רשומת חיפוש זו?",
-    "deleteRecord": "מחק רשומת חיפוש זו"
+    "deleteRecord": "מחק רשומת חיפוש זו",
+    "noHistory": "אין עדיין היסטוריית חיפושים. התחל לחפש כדי לראות את ההיסטוריה שלך כאן!",
+    "errorLoading": "שגיאה בטעינת היסטוריית החיפושים:",
+    "searchLabel": "חיפוש:",
+    "imagesLabel": "תמונות",
+    "previousPage": "עמוד קודם",
+    "nextPage": "עמוד הבא",
+    "pageInfo": "עמוד {{current}} מתוך {{total}}",
+    "totalItems": "סה\"כ: {{count}} חיפושים",
+    "noItems": "אין פריטים"
   },
   "historyDetailPage": {
     "title": "פרטי היסטוריית חיפוש",

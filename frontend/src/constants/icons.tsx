@@ -48,6 +48,18 @@ export const icons = {
     path: (
       <path d="M19 12H5M12 19l-7-7 7-7" />
     )
+  },
+  arrow_back: {
+    viewBox: "0 0 24 24",
+    path: (
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    )
+  },
+  arrow_forward: {
+    viewBox: "0 0 24 24",
+    path: (
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    )
   }
 } as const;
 

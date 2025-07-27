@@ -90,6 +90,35 @@ class SpaceDB:
         # TODO: Filter by user_id when JWT authentication is implemented
         return self._search_history
 
+    def get_search_history_paginated(self, user_id: str = None, page: int = 1, page_size: int = 100) -> Dict:
+        """Get paginated search history. In the future, filter by user_id when authentication is implemented."""
+        # For now, return all search history since we don't have user authentication yet
+        # TODO: Filter by user_id when JWT authentication is implemented
+        
+        # Calculate pagination
+        total_items = len(self._search_history)
+        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+        
+        # Calculate offset
+        offset = (page - 1) * page_size
+        
+        # Get paginated items
+        items = self._search_history[offset:offset + page_size]
+        
+        # Calculate pagination flags
+        has_next = page < total_pages
+        has_previous = page > 1
+        
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "has_next": has_next,
+            "has_previous": has_previous
+        }
+
     def delete_search_history_item(self, search_id: str, user_id: str = None) -> bool:
         """Delete a specific search history item. Returns True if deleted, False if not found."""
         # TODO: Validate user ownership when JWT authentication is implemented

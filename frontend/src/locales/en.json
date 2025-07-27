@@ -31,7 +31,16 @@
     "subtitle": "Browse your search history",
     "comingSoon": "History functionality coming soon!",
     "confirmDelete": "Are you sure you want to delete this search history?",
-    "deleteRecord": "Delete this search record"
+    "deleteRecord": "Delete this search record",
+    "noHistory": "No search history yet. Start searching to see your history here!",
+    "errorLoading": "Error loading search history:",
+    "searchLabel": "Search:",
+    "imagesLabel": "images",
+    "previousPage": "Previous Page",
+    "nextPage": "Next Page",
+    "pageInfo": "Page {{current}} of {{total}}",
+    "totalItems": "Total: {{count}} searches",
+    "noItems": "No items"
   },
   "historyDetailPage": {
     "title": "Search History Detail",
