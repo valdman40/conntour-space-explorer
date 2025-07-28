@@ -43,6 +43,15 @@ async function deleteHistoryFromAPI(searchId: string): Promise<void> {
   }
 }
 
+async function clearAllHistoryFromAPI(): Promise<void> {
+  try {
+    await axios.delete(`${API_BASE_URL}/api/history`);
+  } catch (error) {
+    console.error('Failed to clear all history from API:', error);
+    throw error;
+  }
+}
+
 // Helper functions for local storage (keeping as backup)
 function* saveHistoryToStorage(history: SearchHistoryItem[]) {
   try {
@@ -107,7 +116,12 @@ function* removeSearchFromHistorySaga(action: PayloadAction<string>) {
 // Worker saga: Clear all history
 function* clearHistorySaga() {
   try {
+    // Call the API to clear all history
+    yield call(clearAllHistoryFromAPI);
+    
+    // Also clear local storage as backup
     yield call(saveHistoryToStorage, []);
+    
     yield put(clearHistorySuccess());
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to clear history';

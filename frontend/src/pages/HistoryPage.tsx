@@ -123,6 +123,32 @@ const TotalCounter = styled.div`
   font-weight: 600;
 `;
 
+const HeaderTopSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: ${sizes.margin.md};
+`;
+
+const ClearAllButton = styled(Button)`
+  background: rgba(255, 99, 99, 0.2);
+  border: 1px solid rgba(255, 99, 99, 0.3);
+  color: ${colors.text.primary};
+  font-size: ${sizes.fontSize.sm};
+  padding: ${sizes.padding.sm} ${sizes.padding.md};
+  
+  &:hover {
+    background: rgba(255, 99, 99, 0.3);
+    border-color: rgba(255, 99, 99, 0.5);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 // Styled component for error message
 const ErrorMessage = styled.div`
     text-align: center;
@@ -141,7 +167,8 @@ export const HistoryPage: React.FC = () => {
         error,
         pagination,
         loadSearchHistory,
-        removeSearchTerm
+        removeSearchTerm,
+        clearSearchHistory
     } = useReduxSearchHistory();
 
     // Helper function to format date and time
@@ -176,6 +203,14 @@ export const HistoryPage: React.FC = () => {
         }
     };
 
+    const handleClearAll = () => {
+        const confirmClearAll = window.confirm(t('historyPage.confirmClearAll'));
+        
+        if (confirmClearAll) {
+            clearSearchHistory();
+        }
+    };
+
     if (loading && !searchHistory.length) {
         return (
             <HistoryContainer>
@@ -197,14 +232,25 @@ export const HistoryPage: React.FC = () => {
     return (
         <HistoryContainer>
             <HistoryHeader>
-                <TotalCounter>
-                    {pagination.totalItems > 0 
-                        ? t('historyPage.totalItems', { 
-                            count: pagination.totalItems
-                          })
-                        : t('historyPage.noItems', 'No items')
-                    }
-                </TotalCounter>
+                <HeaderTopSection>
+                    <TotalCounter>
+                        {pagination.totalItems > 0 
+                            ? t('historyPage.totalItems', { 
+                                count: pagination.totalItems
+                              })
+                            : t('historyPage.noItems', 'No items')
+                        }
+                    </TotalCounter>
+                    
+                    {pagination.totalItems > 0 && (
+                        <ClearAllButton 
+                            onClick={handleClearAll}
+                            disabled={loading}
+                        >
+                            {t('historyPage.clearAll')}
+                        </ClearAllButton>
+                    )}
+                </HeaderTopSection>
                 
                 {/* Pagination Controls at the top */}
                 {pagination.totalPages > 1 && (
@@ -244,8 +290,8 @@ export const HistoryPage: React.FC = () => {
                             onClick={() => handleHistoryRecordClick(record.id)}
                         >
                             <div>
-                                <SearchTitle title={`${t('historyPage.searchLabel')} "${record.query}"`}>
-                                    {t('historyPage.searchLabel')} "{record.query}"
+                                <SearchTitle title={`"${record.query}"`}>
+                                    "{record.query}"
                                 </SearchTitle>
                             </div>
                             <div>

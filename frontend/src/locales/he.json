@@ -43,8 +43,10 @@
     "previousPage": "עמוד קודם",
     "nextPage": "עמוד הבא",
     "pageInfo": "עמוד {{current}} מתוך {{total}}",
-    "totalItems": "סה\"כ: {{count}} חיפושים",
-    "noItems": "אין פריטים"
+    "totalItems": "סה\"כ: {{count}}",
+    "noItems": "אין פריטים",
+    "clearAll": "נקה הכל",
+    "confirmClearAll": "האם אתה בטוח שברצונך לנקות את כל היסטוריית החיפוש? לא ניתן לבטל פעולה זו."
   },
   "historyDetailPage": {
     "title": "פרטי היסטוריית חיפוש",

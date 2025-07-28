@@ -43,8 +43,10 @@
     "previousPage": "Previous Page",
     "nextPage": "Next Page",
     "pageInfo": "Page {{current}} of {{total}}",
-    "totalItems": "Total: {{count}} searches",
-    "noItems": "No items"
+    "totalItems": "Total: {{count}}",
+    "noItems": "No items",
+    "clearAll": "Clear All",
+    "confirmClearAll": "Are you sure you want to clear all search history? This action cannot be undone."
   },
   "historyDetailPage": {
     "title": "Search History Detail",

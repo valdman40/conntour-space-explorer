@@ -90,7 +90,8 @@ const ModalImage = styled.img`
   max-height: 60vh;
   object-fit: contain;
   border-radius: ${sizes.radius.md};
-  margin-bottom: ${sizes.margin.md};
+  margin: 0 auto ${sizes.margin.md} auto;
+  display: block;
 `;
 
 const ModalTitle = styled.h2`
@@ -165,17 +166,6 @@ export const NasaImageCard: React.FC<NasaImageCardProps> = React.memo(({ nasaIma
             <ModalDate>
               {new Date(launch_date).toLocaleDateString()}
             </ModalDate>
-          )}
-          {image_url && (
-            <ModalButtonContainer>
-              <LinkButton 
-                href={image_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                {t('common.viewFullImage')}
-              </LinkButton>
-            </ModalButtonContainer>
           )}
         </div>
       </Modal>

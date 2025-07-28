@@ -194,3 +194,30 @@ def delete_search_history_item(search_id: str, request: Request, authorization: 
     except Exception as e:
         # Log the error in production
         raise HTTPException(status_code=500, detail="Failed to delete search history item")
+
+
+@app.delete("/api/history")
+def clear_all_search_history(request: Request, authorization: Optional[str] = Header(None)):
+    """
+    Clear all search history items for the current user.
+    
+    In the future, this will validate user authentication and only clear their items.
+    """
+    # Rate limiting
+    client_ip = request.client.host
+    check_rate_limit(client_ip)
+    
+    # TODO: Extract user_id from JWT token when authentication is implemented
+    user_id = None  # Placeholder for future authentication
+    
+    try:
+        success = db.clear_all_search_history(user_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to clear search history")
+        
+        return {"message": "All search history cleared successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the error in production
+        raise HTTPException(status_code=500, detail="Failed to clear search history")

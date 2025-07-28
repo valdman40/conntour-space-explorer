@@ -151,6 +151,17 @@ class SpaceDB:
                 return True
         return False
 
+    def clear_all_search_history(self, user_id: str = None) -> bool:
+        """Clear all search history items. Returns True if successful."""
+        # TODO: Filter by user_id when JWT authentication is implemented
+        try:
+            self._search_history.clear()
+            self._save_search_history()
+            return True
+        except Exception as e:
+            print(f"Error clearing search history: {e}")
+            return False
+
     def search_sources(self, query: str) -> tuple[List[Dict], Dict[int, float]]:
         """
         Search through sources using basic keyword matching.
