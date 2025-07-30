@@ -1,8 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { NasaImage } from '../../types';
+import { NasaImage } from '../../../types';
 
 // State interface
-export interface ImagesState {
+export interface SearchState {
   images: NasaImage[];
   loading: boolean;
   error: string | null;
@@ -13,7 +13,7 @@ export interface ImagesState {
 }
 
 // Initial state
-const initialState: ImagesState = {
+const initialState: SearchState = {
   images: [],
   loading: false,
   error: null,
@@ -24,8 +24,8 @@ const initialState: ImagesState = {
 };
 
 // Redux slice
-const imagesSlice = createSlice({
-  name: 'images',
+const searchSlice = createSlice({
+  name: 'search',
   initialState,
   reducers: {
     // Loading actions
@@ -127,7 +127,7 @@ export const {
   clearImages,
   setSearchTerm,
   resetPagination,
-} = imagesSlice.actions;
+} = searchSlice.actions;
 
 // Export reducer
-export default imagesSlice.reducer;
+export default searchSlice.reducer;

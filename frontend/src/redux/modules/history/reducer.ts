@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { SearchHistoryItem, PaginatedHistoryResponse } from '../../types';
+import { SearchHistoryItem, PaginatedHistoryResponse } from '../../../types';
 
 // State interface
 export interface HistoryState {
@@ -107,9 +107,9 @@ const historySlice = createSlice({
       state.error = action.payload;
     },
 
-    // Utility actions
-    clearHistoryError: (state) => {
-      state.error = null;
+    // Local operations (for optimistic updates)
+    setHistoryItems: (state, action: PayloadAction<SearchHistoryItem[]>) => {
+      state.searchHistory = action.payload;
     },
   },
 });
@@ -128,7 +128,7 @@ export const {
   loadHistoryRequest,
   loadHistorySuccess,
   loadHistoryFailure,
-  clearHistoryError,
+  setHistoryItems,
 } = historySlice.actions;
 
 // Export reducer

@@ -1,7 +1,7 @@
 import { call, put, takeEvery, fork } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { SearchHistoryItem, PaginatedHistoryResponse } from '../../types';
+import { SearchHistoryItem, PaginatedHistoryResponse } from '../../../types';
 import {
   addSearchToHistoryRequest,
   addSearchToHistorySuccess,
@@ -15,7 +15,7 @@ import {
   loadHistoryRequest,
   loadHistorySuccess,
   loadHistoryFailure,
-} from '../slices/historySlice';
+} from './reducer';
 
 // Local storage key
 const HISTORY_STORAGE_KEY = 'nasa-space-explorer-history';
@@ -104,9 +104,17 @@ function* addSearchToHistorySaga(action: PayloadAction<SearchHistoryItem>) {
 // Worker saga: Remove search from history
 function* removeSearchFromHistorySaga(action: PayloadAction<string>) {
   try {
-    // Delete from API
-    yield call(deleteHistoryFromAPI, action.payload);
-    yield put(removeSearchFromHistorySuccess(action.payload));
+    const searchId = action.payload;
+    
+    // Try to delete from API first
+    yield call(deleteHistoryFromAPI, searchId);
+    
+    // Also remove from local storage
+    const currentHistory: SearchHistoryItem[] = yield call(loadHistoryFromStorage);
+    const updatedHistory = currentHistory.filter(item => item.id !== searchId);
+    yield call(saveHistoryToStorage, updatedHistory);
+    
+    yield put(removeSearchFromHistorySuccess(searchId));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to remove search from history';
     yield put(removeSearchFromHistoryFailure(errorMessage));
@@ -116,10 +124,10 @@ function* removeSearchFromHistorySaga(action: PayloadAction<string>) {
 // Worker saga: Clear all history
 function* clearHistorySaga() {
   try {
-    // Call the API to clear all history
+    // Try to clear from API first
     yield call(clearAllHistoryFromAPI);
     
-    // Also clear local storage as backup
+    // Also clear from local storage
     yield call(saveHistoryToStorage, []);
     
     yield put(clearHistorySuccess());
@@ -130,27 +138,39 @@ function* clearHistorySaga() {
 }
 
 // Worker saga: Load history
-function* loadHistorySaga(action: PayloadAction<{ page?: number; pageSize?: number }> = { type: '', payload: {} }) {
+function* loadHistorySaga(action: PayloadAction<{ page?: number; pageSize?: number }>) {
   try {
-    console.log('Loading history from API...');
-    const { page = 1, pageSize = 100 } = action.payload || {};
-    const response: PaginatedHistoryResponse = yield call(loadHistoryFromAPI, page, pageSize);
-    console.log('History loaded successfully:', response);
+    const { page = 1, pageSize = 100 } = action.payload;
     
-    // Map backend response to frontend format
-    const paginatedResponse: PaginatedHistoryResponse = {
-      items: response.items,
-      page: response.page,
-      page_size: response.page_size,
-      total_items: response.total_items,
-      total_pages: response.total_pages,
-      has_next: response.has_next,
-      has_previous: response.has_previous
-    };
-    
-    yield put(loadHistorySuccess(paginatedResponse));
+    try {
+      // Try to load from API first
+      const apiHistory: PaginatedHistoryResponse = yield call(loadHistoryFromAPI, page, pageSize);
+      yield put(loadHistorySuccess(apiHistory));
+    } catch (apiError) {
+      console.warn('API unavailable, falling back to localStorage:', apiError);
+      
+      // Fallback to localStorage
+      const localHistory: SearchHistoryItem[] = yield call(loadHistoryFromStorage);
+      
+      // Create pagination info for local storage
+      const totalItems = localHistory.length;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const items = localHistory.slice(startIndex, endIndex);
+      
+      const paginatedResponse: PaginatedHistoryResponse = {
+        items,
+        page,
+        page_size: pageSize,
+        total_items: totalItems,
+        total_pages: Math.ceil(totalItems / pageSize),
+        has_next: endIndex < totalItems,
+        has_previous: page > 1,
+      };
+      
+      yield put(loadHistorySuccess(paginatedResponse));
+    }
   } catch (error) {
-    console.error('Error loading history:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to load history';
     yield put(loadHistoryFailure(errorMessage));
   }
@@ -170,14 +190,11 @@ function* watchClearHistory() {
 }
 
 function* watchLoadHistory() {
-  console.log('History saga watcher started - listening for loadHistoryRequest');
-  console.log('Listening for action type:', loadHistoryRequest.type);
   yield takeEvery(loadHistoryRequest.type, loadHistorySaga);
 }
 
 // Root saga
 export default function* historySaga() {
-  console.log('History saga initialized');
   yield fork(watchAddSearchToHistory);
   yield fork(watchRemoveSearchFromHistory);
   yield fork(watchClearHistory);

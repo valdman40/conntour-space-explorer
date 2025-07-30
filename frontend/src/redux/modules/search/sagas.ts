@@ -1,6 +1,6 @@
-import { call, put, takeEvery, takeLatest, select, delay, fork, cancel, take } from 'redux-saga/effects';
+import { call, put, takeEvery, takeLatest, select, delay, fork } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
-import { NasaImage, SearchHistoryItem } from '../../types';
+import { NasaImage, SearchHistoryItem } from '../../../types';
 import {
   loadImagesRequest,
   loadImagesSuccess,
@@ -12,11 +12,11 @@ import {
   searchImagesDebounced,
   searchImagesSuccess,
   searchImagesFailure,
-} from '../slices/imagesSlice';
+} from './reducer';
 import {
   addSearchToHistorySuccess,
   addSearchToHistoryFailure,
-} from '../slices/historySlice';
+} from '../history/reducer';
 
 // API response interfaces
 interface ApiImage {
@@ -119,7 +119,7 @@ function* loadMoreImagesSaga(): Generator<any, void, any> {
   try {
     // Get current page from state
     const state: any = yield select();
-    const currentPage = state.images.page;
+    const currentPage = state.search.page;
     const nextPage = currentPage + 1;
     
     const response: { images: NasaImage[]; total: number; hasMore: boolean } = yield call(fetchImages, nextPage, 20);
@@ -166,7 +166,14 @@ function* debouncedSearchImagesSaga(action: PayloadAction<{ query: string }>): G
     // Add debouncing - wait 500ms before executing search
     yield delay(500);
     
-    // If query is empty, load all images (regular page)
+    // Check if we're already loading to prevent multiple concurrent requests
+    const state: any = yield select();
+    if (state.search.loading) {
+      console.log('Already loading, skipping debounced search');
+      return;
+    }
+    
+    // If query is empty, load all images directly
     if (!query.trim()) {
       yield put(loadImagesRequest());
     } else {
@@ -196,7 +203,7 @@ function* watchDebouncedSearchImages() {
 }
 
 // Root saga
-export default function* imagesSaga() {
+export default function* searchSaga() {
   yield fork(watchLoadImages);
   yield fork(watchLoadMoreImages);
   yield fork(watchSearchImages);

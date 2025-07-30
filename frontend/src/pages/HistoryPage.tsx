@@ -5,7 +5,18 @@ import styled, { keyframes } from 'styled-components';
 import { Button, Icon, LoadingSpinner } from '../components/common';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
-import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
+import { useAppDispatch, useAppSelector } from '../redux/store';
+import {
+  selectHistoryItems,
+  selectHistoryLoading,
+  selectHistoryError,
+  selectHistoryPagination
+} from '../redux/modules/history/selectors';
+import {
+  loadHistoryRequest,
+  clearHistoryRequest,
+  removeSearchFromHistoryRequest
+} from '../redux/modules/history/reducer';
 
 const fadeIn = keyframes`
   from {
@@ -161,15 +172,12 @@ const ErrorMessage = styled.div`
 export const HistoryPage: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const {
-        searchHistory,
-        loading,
-        error,
-        pagination,
-        loadSearchHistory,
-        removeSearchTerm,
-        clearSearchHistory
-    } = useReduxSearchHistory();
+    const dispatch = useAppDispatch();
+    
+    const searchHistory = useAppSelector(selectHistoryItems);
+    const loading = useAppSelector(selectHistoryLoading);
+    const error = useAppSelector(selectHistoryError);
+    const pagination = useAppSelector(selectHistoryPagination);
 
     // Helper function to format date and time
     const formatDateTime = (timestamp: number) => {
@@ -181,11 +189,11 @@ export const HistoryPage: React.FC = () => {
 
     // Load search history when component mounts
     useEffect(() => {
-        loadSearchHistory(1, 100); // Load first page with 100 items
-    }, [loadSearchHistory]);
+        dispatch(loadHistoryRequest({ page: 1, pageSize: 100 })); // Load first page with 100 items
+    }, [dispatch]);
 
     const handlePageChange = (newPage: number) => {
-        loadSearchHistory(newPage, pagination.pageSize);
+        dispatch(loadHistoryRequest({ page: newPage, pageSize: pagination.pageSize }));
     };
 
     const handleHistoryRecordClick = (historyId: string) => {
@@ -199,7 +207,7 @@ export const HistoryPage: React.FC = () => {
 
         if (confirmDelete) {
             // Use the record ID directly for deletion
-            removeSearchTerm(recordId);
+            dispatch(removeSearchFromHistoryRequest(recordId));
         }
     };
 
@@ -207,7 +215,7 @@ export const HistoryPage: React.FC = () => {
         const confirmClearAll = window.confirm(t('historyPage.confirmClearAll'));
         
         if (confirmClearAll) {
-            clearSearchHistory();
+            dispatch(clearHistoryRequest());
         }
     };
 

@@ -4,7 +4,12 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
-import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
+import { useAppSelector } from '../redux/store';
+import {
+  selectHistoryItems,
+  selectHistoryLoading,
+  selectHistoryError
+} from '../redux/modules/history/selectors';
 import { NasaImagesList } from '../components/NasaImagesList';
 import { LoadingSpinner, ErrorMessage } from '../components/common';
 
@@ -54,7 +59,10 @@ const ResultsSection = styled.div`
 export const HistoryDetailPage: React.FC = () => {
   const { historyId } = useParams<{ historyId: string }>();
   const { t } = useTranslation();
-  const { searchHistory, loading, error } = useReduxSearchHistory();
+  
+  const searchHistory = useAppSelector(selectHistoryItems);
+  const loading = useAppSelector(selectHistoryLoading);
+  const error = useAppSelector(selectHistoryError);
 
   // Find the specific history item by ID
   const historyItem = searchHistory.find(item => item.id === historyId);

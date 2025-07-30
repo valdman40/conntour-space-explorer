@@ -10,7 +10,9 @@ import { Icon } from './common/Icon';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
 import { Button } from './common';
-import { useReduxImages } from '../hooks/useReduxImages';
+import { useAppDispatch, useAppSelector } from '../redux/store';
+import { selectSearchTerm } from '../redux/modules/search/selectors';
+import { searchImagesDebounced } from '../redux/modules/search/reducer';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -119,9 +121,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const location = useLocation();
+    const dispatch = useAppDispatch();
     
-    // Redux hooks for search functionality
-    const { searchImagesDebounced, searchTerm: reduxSearchTerm } = useReduxImages();
+    // Redux selectors
+    const reduxSearchTerm = useAppSelector(selectSearchTerm);
     const [localSearchTerm, setLocalSearchTerm] = useState('');
 
     // Sync local search term with Redux state when Redux state changes
@@ -129,7 +132,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         if (reduxSearchTerm !== localSearchTerm) {
             setLocalSearchTerm(reduxSearchTerm);
         }
-    }, [reduxSearchTerm]);
+    }, [reduxSearchTerm, localSearchTerm]);
 
     const isSearchPage = location.pathname === '/search';
     const isReduxSearchPage = location.pathname === '/search-redux';
@@ -159,7 +162,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
         
         // Always trigger the debounced search (handles both search and clear)
-        searchImagesDebounced(searchTerm);
+        dispatch(searchImagesDebounced({ query: searchTerm }));
         console.log('Debounced search triggered from Layout:', searchTerm || '(empty - will load all images)');
     };
 

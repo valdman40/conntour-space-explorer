@@ -7,8 +7,23 @@ import {
     LoadMoreSection
 } from '../components/common';
 import { NasaImagesList } from '../components/NasaImagesList';
-import { useReduxImages } from '../hooks/useReduxImages';
-import { useReduxSearchHistory } from '../hooks/useReduxSearchHistory';
+import { useAppDispatch, useAppSelector } from '../redux/store';
+import {
+    selectSearchImages,
+    selectSearchLoading,
+    selectSearchError,
+    selectSearchHasMore,
+    selectSearchTerm,
+    selectSearchPage
+} from '../redux/modules/search/selectors';
+import {
+    loadImagesRequest,
+    loadMoreImagesRequest,
+    searchImagesRequest,
+    clearImages,
+    setSearchTerm
+} from '../redux/modules/search/reducer';
+import { loadHistoryRequest } from '../redux/modules/history/reducer';
 import { sizes } from '../constants/sizes';
 import { colors } from '../constants/colors';
 
@@ -53,25 +68,15 @@ interface SearchPageProps {
 
 export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: externalSearchTerm }) => {
     const { t } = useTranslation();
+    const dispatch = useAppDispatch();
 
-    // Redux hooks
-    const {
-        images,
-        loading,
-        error,
-        hasMore,
-        searchTerm,
-        page,
-        loadImages,
-        loadMoreImages,
-        searchImages,
-        clearImages,
-        setSearchTerm
-    } = useReduxImages();
-
-    const {
-        loadSearchHistory
-    } = useReduxSearchHistory();
+    // Redux selectors
+    const images = useAppSelector(selectSearchImages);
+    const loading = useAppSelector(selectSearchLoading);
+    const error = useAppSelector(selectSearchError);
+    const hasMore = useAppSelector(selectSearchHasMore);
+    const searchTerm = useAppSelector(selectSearchTerm);
+    const page = useAppSelector(selectSearchPage);
 
     const scrollLoadingRef = useRef(false);
 
@@ -85,11 +90,11 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
             currentPage: page,
             hasMore
         });
-        
+
         // If there's already a search term in Redux state, restore the search results
         if (searchTerm && searchTerm.trim()) {
             console.log('Restoring search results for:', searchTerm);
-            searchImages(searchTerm);
+            dispatch(searchImagesRequest({ query: searchTerm }));
         } else if (images.length > 0 && page >= 1) {
             // We have existing browsing state - don't reload, just preserve what we have
             console.log('Preserving existing browsing state:', {
@@ -101,40 +106,40 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
         } else {
             // No existing search term and no existing images, load fresh
             console.log('No existing state, loading fresh images');
-            loadImages();
+            dispatch(loadImagesRequest());
         }
-        loadSearchHistory();
+        dispatch(loadHistoryRequest({ page: 1, pageSize: 100 }));
     }, []);
 
     // Update search term when external prop changes
     useEffect(() => {
         if (externalSearchTerm !== undefined && externalSearchTerm !== searchTerm) {
-            setSearchTerm(externalSearchTerm);
+            dispatch(setSearchTerm(externalSearchTerm));
             if (externalSearchTerm.trim()) {
-                searchImages(externalSearchTerm);
+                dispatch(searchImagesRequest({ query: externalSearchTerm }));
             }
         }
-    }, [externalSearchTerm, searchTerm]);    // Handle load more
+    }, [externalSearchTerm, searchTerm, dispatch]);    // Handle load more
     const loadMore = useCallback(() => {
         // Only allow load more if we're not in search mode
         const isSearchMode = searchTerm && searchTerm.trim().length > 0;
-        
+
         if (!loading && hasMore && !scrollLoadingRef.current && !isSearchMode) {
             scrollLoadingRef.current = true;
-            loadMoreImages();
-            
+            dispatch(loadMoreImagesRequest());
+
             // Reset the scroll loading flag after a delay
             setTimeout(() => {
                 scrollLoadingRef.current = false;
             }, 1000);
         }
-    }, [loading, hasMore, searchTerm]);
+    }, [loading, hasMore, searchTerm, dispatch]);
 
     // Infinite scroll handler
     const handleScroll = useCallback(() => {
         // Only allow infinite scroll if we're not in search mode
         const isSearchMode = searchTerm && searchTerm.trim().length > 0;
-        
+
         if (scrollLoadingRef.current || !hasMore || loading || isSearchMode) {
             return;
         }
@@ -155,9 +160,9 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
 
     // Handle reload
     const handleReload = useCallback(() => {
-        clearImages();
-        loadImages();
-    }, [clearImages, loadImages]);
+        dispatch(clearImages());
+        dispatch(loadImagesRequest());
+    }, [dispatch]);
 
     // Expose reload function to parent
     useEffect(() => {
@@ -169,23 +174,23 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
     // Handle search from search bar
     const handleSearch = useCallback((searchQuery: string) => {
         if (searchQuery.trim()) {
-            setSearchTerm(searchQuery);
-            searchImages(searchQuery);
+            dispatch(setSearchTerm(searchQuery));
+            dispatch(searchImagesRequest({ query: searchQuery }));
 
             // Save to search history after successful search
             // This will be handled by the saga when search is successful
         }
-    }, [setSearchTerm, searchImages]);
+    }, [dispatch]);
 
     // Determine if a search has been performed
     const hasSearched = searchTerm && searchTerm.trim().length > 0;
     const hasResults = images.length > 0;
     const showNoResults = hasSearched && !hasResults && !loading && !error;
     const showResultsCount = hasSearched && hasResults && !loading;
-    
+
     // Only show LoadMoreSection for browsing mode (not search mode)
     const shouldShowLoadMore = !hasSearched && hasResults && !error;
-    
+
     // Debug logging
     console.log('SearchPage render state:', {
         searchTerm,
