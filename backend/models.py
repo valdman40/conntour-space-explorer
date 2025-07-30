@@ -57,6 +57,21 @@ class SearchRequest(BaseModel):
         max_length=500,
         description="Search query for NASA images"
     )
+    page: int = Field(
+        default=1,
+        ge=1,
+        description="Page number for pagination"
+    )
+    pageSize: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Number of results per page"
+    )
+    skipHistory: bool = Field(
+        default=False,
+        description="Skip creating history entry (for pagination)"
+    )
     
     @validator('query')
     def validate_query(cls, v):
@@ -101,3 +116,6 @@ class SearchResponse(BaseModel):
     confidence_scores: Dict[int, float]
     timestamp: int
     resultCount: int
+    page: int
+    pageSize: int
+    has_more: bool

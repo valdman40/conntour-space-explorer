@@ -89,6 +89,23 @@ const searchSlice = createSlice({
       state.error = action.payload;
     },
 
+    // Load more search results (pagination for search)
+    loadMoreSearchResultsRequest: (state, action: PayloadAction<{ query: string; page: number; pageSize: number }>) => {
+      state.loading = true;
+      state.error = null;
+    },
+    loadMoreSearchResultsSuccess: (state, action: PayloadAction<{ images: NasaImage[]; hasMore: boolean }>) => {
+      state.loading = false;
+      state.images = [...state.images, ...action.payload.images];
+      state.hasMore = action.payload.hasMore;
+      state.error = null;
+      state.page += 1;
+    },
+    loadMoreSearchResultsFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
+
     // Utility actions
     clearImages: (state) => {
       state.images = [];
@@ -116,6 +133,9 @@ export const {
   searchImagesDebounced,
   searchImagesSuccess,
   searchImagesFailure,
+  loadMoreSearchResultsRequest,
+  loadMoreSearchResultsSuccess,
+  loadMoreSearchResultsFailure,
   clearImages,
   resetPagination,
 } = searchSlice.actions;

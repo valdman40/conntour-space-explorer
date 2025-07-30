@@ -12,6 +12,9 @@ import {
   searchImagesDebounced,
   searchImagesSuccess,
   searchImagesFailure,
+  loadMoreSearchResultsRequest,
+  loadMoreSearchResultsSuccess,
+  loadMoreSearchResultsFailure,
 } from './reducer';
 import {
   addSearchToHistorySuccess,
@@ -27,6 +30,17 @@ interface ApiImage {
   description: string;
   image_url: string | null;
   status: string;
+}
+
+interface SearchResponse {
+  query: string;
+  results: NasaImage[];
+  confidence_scores: Record<number, number>;
+  timestamp: number;
+  resultCount: number;
+  page: number;
+  pageSize: number;
+  has_more: boolean;
 }
 
 // Convert API image to NasaImage
@@ -66,14 +80,19 @@ const fetchImages = async (page: number = 1, limit: number = 20): Promise<{ imag
 };
 
 // Search images with confidence scores using real API
-const searchImagesApi = async (query: string): Promise<SearchHistoryItem> => {
+const searchImagesApi = async (query: string): Promise<SearchResponse> => {
   try {
     const response = await fetch('/api/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ 
+        query, 
+        page: 1, 
+        pageSize: 20,
+        skipHistory: false // Create history for first search
+      }),
     });
     
     if (!response.ok) {
@@ -82,19 +101,42 @@ const searchImagesApi = async (query: string): Promise<SearchHistoryItem> => {
     
     const searchResponse = await response.json();
     
-    // Convert API response to SearchHistoryItem format
-    const searchHistoryItem: SearchHistoryItem = {
-      id: Date.now().toString(), // Generate a temporary ID for the frontend
-      query: searchResponse.query,
-      timestamp: searchResponse.timestamp,
-      resultCount: searchResponse.resultCount,
-      results: searchResponse.results,
-      confidence_scores: searchResponse.confidence_scores,
-    };
-    
-    return searchHistoryItem;
+    // Return the full SearchResponse
+    return searchResponse;
   } catch (error) {
     console.error('Error searching images:', error);
+    throw error;
+  }
+};
+
+// Load more search results (pagination for search without creating history)
+const loadMoreSearchResultsApi = async (query: string, page: number, pageSize: number): Promise<{ images: NasaImage[]; hasMore: boolean }> => {
+  try {
+    const response = await fetch('/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        query, 
+        page, 
+        pageSize,
+        skipHistory: true // Flag to indicate this shouldn't create history
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const searchResponse = await response.json();
+    
+    return {
+      images: searchResponse.results,
+      hasMore: searchResponse.has_more || false,
+    };
+  } catch (error) {
+    console.error('Error loading more search results:', error);
     throw error;
   }
 };
@@ -130,24 +172,48 @@ function* loadMoreImagesSaga(action: PayloadAction<{ page: number; pageSize: num
   }
 }
 
+// Worker saga: Load more search results (pagination for search without creating history)
+function* loadMoreSearchResultsSaga(action: PayloadAction<{ query: string; page: number; pageSize: number }>): Generator<any, void, any> {
+  try {
+    const { query, page, pageSize } = action.payload;
+    
+    const response: { images: NasaImage[]; hasMore: boolean } = yield call(loadMoreSearchResultsApi, query, page, pageSize);
+    yield put(loadMoreSearchResultsSuccess({
+      images: response.images,
+      hasMore: response.hasMore,
+    }));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to load more search results';
+    yield put(loadMoreSearchResultsFailure(errorMessage));
+  }
+}
+
 // Worker saga: Search images with debouncing
 function* searchImagesSaga(action: PayloadAction<{ query: string }>): Generator<any, void, any> {
   try {
     const { query } = action.payload;
     
-    const historyItem: SearchHistoryItem = yield call(searchImagesApi, query);
+    const response: SearchResponse = yield call(searchImagesApi, query);
     
     yield put(searchImagesSuccess({
-      images: historyItem.results,
-      hasMore: false, // No pagination for search
-      totalItems: historyItem.resultCount,
+      images: response.results,
+      hasMore: response.has_more,
+      totalItems: response.resultCount,
       isLoadMore: false,
     }));
 
-    // Add to search history using the historyItem from the response
-    if (historyItem && historyItem.id) {
-      yield put(addSearchToHistorySuccess(historyItem));
-    }
+    // Add to search history: create a SearchHistoryItem from the response
+    const historyItem: SearchHistoryItem = {
+      id: Date.now().toString(), // Generate a temporary ID for the frontend
+      query: response.query,
+      timestamp: response.timestamp,
+      results: response.results,
+      resultCount: response.resultCount,
+      confidence_scores: response.confidence_scores,
+    };
+    
+    // Add the search to history
+    yield put(addSearchToHistorySuccess(historyItem));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Search failed';
     yield put(searchImagesFailure(errorMessage));
@@ -191,6 +257,10 @@ function* watchLoadMoreImages() {
   yield takeEvery(loadMoreImagesRequest.type, loadMoreImagesSaga);
 }
 
+function* watchLoadMoreSearchResults() {
+  yield takeEvery(loadMoreSearchResultsRequest.type, loadMoreSearchResultsSaga);
+}
+
 function* watchSearchImages() {
   yield takeLatest(searchImagesRequest.type, searchImagesSaga);
 }
@@ -203,6 +273,7 @@ function* watchDebouncedSearchImages() {
 export default function* searchSaga() {
   yield fork(watchLoadImages);
   yield fork(watchLoadMoreImages);
+  yield fork(watchLoadMoreSearchResults);
   yield fork(watchSearchImages);
   yield fork(watchDebouncedSearchImages);
 }

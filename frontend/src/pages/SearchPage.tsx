@@ -6,24 +6,23 @@ import {
     ErrorMessage,
     LoadMoreSection
 } from '../components/common';
-import { SearchBar } from '../components/common/SearchBar';
-import { NasaImagesList } from '../components/NasaImagesList';
-import { useAppDispatch, useAppSelector } from '../redux/store';
+import { useAppSelector, useAppDispatch } from '../redux/store';
 import {
     selectSearchImages,
     selectSearchLoading,
     selectSearchError,
     selectSearchHasMore,
-    selectSearchPage
+    selectSearchPage,
+    selectSearchTotalItems,
 } from '../redux/modules/search/selectors';
+import { SearchBar } from '../components/common/SearchBar';
+import { NasaImagesList } from '../components/NasaImagesList';
 import {
     loadImagesRequest,
     loadMoreImagesRequest,
-    searchImagesRequest,
     searchImagesDebounced,
-    clearImages
+    loadMoreSearchResultsRequest
 } from '../redux/modules/search/reducer';
-import { loadHistoryRequest } from '../redux/modules/history/reducer';
 import { sizes } from '../constants/sizes';
 import { colors } from '../constants/colors';
 
@@ -63,7 +62,8 @@ const SearchResultsInfo = styled.div`
 
 const SearchBarWrapper = styled.div`
   width: 100%;
-  max-width: 600px;
+  display: flex;
+  justify-content: center;
   margin-bottom: ${sizes.margin.lg};
   padding: 0 ${sizes.padding.md};
 `;
@@ -85,6 +85,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
     const error = useAppSelector(selectSearchError);
     const hasMore = useAppSelector(selectSearchHasMore);
     const page = useAppSelector(selectSearchPage);
+    const totalItems = useAppSelector(selectSearchTotalItems);
 
     const scrollLoadingRef = useRef(false);
 
@@ -100,10 +101,21 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
 
 
     const loadMore = useCallback(() => {
-        if (!loading && hasMore && !scrollLoadingRef.current && !searchInput) {
+        if (!loading && hasMore && !scrollLoadingRef.current) {
             scrollLoadingRef.current = true;
             const nextPage = page + 1;
-            dispatch(loadMoreImagesRequest({ page: nextPage, pageSize: 20 }));
+            
+            if (searchInput && searchInput.trim()) {
+                // Load more search results (without creating history)
+                dispatch(loadMoreSearchResultsRequest({ 
+                    query: searchInput.trim(), 
+                    page: nextPage, 
+                    pageSize: 20 
+                }));
+            } else {
+                // Load more browse results
+                dispatch(loadMoreImagesRequest({ page: nextPage, pageSize: 20 }));
+            }
 
             // Reset the scroll loading flag after a delay
             setTimeout(() => {
@@ -114,7 +126,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
 
     // Infinite scroll handler
     const handleScroll = useCallback(() => {
-        if (scrollLoadingRef.current || !hasMore || loading && !searchInput) {
+        if (scrollLoadingRef.current || !hasMore || loading) {
             return;
         }
 
@@ -125,7 +137,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
         if (scrollTop + clientHeight >= scrollHeight - 100) {
             loadMore();
         }
-    }, [loading, hasMore, loadMore, searchInput]);
+    }, [loading, hasMore, loadMore]);
 
     useEffect(() => {
         window.addEventListener('scroll', handleScroll);
@@ -138,8 +150,8 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
     const showNoResults = hasSearched && !hasResults && !loading && !error;
     const showResultsCount = hasSearched && hasResults && !loading;
 
-    // Only show LoadMoreSection for browsing mode (not search mode)
-    const shouldShowLoadMore = !hasSearched && hasResults && !error;
+    // Show LoadMoreSection for both browsing and search modes
+    const shouldShowLoadMore = hasResults && !error;
 
     return (
         <SearchPageContainer>
@@ -161,7 +173,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
                     {showResultsCount && (
                         <SearchResultsInfo>
                             {t('searchPage.resultsCount', {
-                                count: images.length,
+                                count: totalItems || images.length,
                                 query: searchInput
                             })}
                         </SearchResultsInfo>
@@ -182,7 +194,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSear
                         <ErrorMessage message={error} />
                     )}
 
-                    {/* Show load more section - only for browsing all images, not search results */}
+                    {/* Show load more section for both browsing and search results */}
                     {shouldShowLoadMore && (
                         <LoadMoreSection
                             loadingMore={loading}

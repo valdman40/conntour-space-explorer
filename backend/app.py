@@ -103,8 +103,8 @@ def get_search_history(
 @app.post("/api/search", response_model=SearchResponse)
 def search_images(search_request: SearchRequest, request: Request, authorization: Optional[str] = Header(None)):
     """
-    Search through NASA images using natural language query.
-    Automatically saves search to history.
+    Search through NASA images using natural language query with pagination.
+    Automatically saves search to history only for first page (page=1).
     """
     # Rate limiting
     client_ip = request.client.host
@@ -112,6 +112,9 @@ def search_images(search_request: SearchRequest, request: Request, authorization
     
     # Additional sanitization (Pydantic validation already applied)
     query = sanitize_input(search_request.query)
+    page = search_request.page
+    page_size = search_request.pageSize
+    skip_history = search_request.skipHistory
     
     if not query:
         raise HTTPException(status_code=400, detail="Query cannot be empty")
@@ -133,29 +136,40 @@ def search_images(search_request: SearchRequest, request: Request, authorization
             raise HTTPException(status_code=400, detail="Query contains potentially malicious patterns")
     
     try:
-        # Perform search
-        results, confidence_scores = db.search_sources(query)
+        # Perform search with pagination
+        results, confidence_scores, has_more, total_count = db.search_sources(query, page, page_size)
         
         # Convert results to NasaImage format
         nasa_images = [NasaImage(**result) for result in results]
         
-        # Save to search history
-        # TODO: Extract user_id from JWT token when authentication is implemented
-        user_id = None  # Placeholder for future authentication
+        # Save to search history only for first page and if not explicitly skipped
+        search_id = None
+        if page == 1 and not skip_history:
+            # TODO: Extract user_id from JWT token when authentication is implemented
+            user_id = None  # Placeholder for future authentication
+            
+            # For history, we want to save ALL matching results, not just the first page
+            # Get all results for history (without pagination)
+            all_results, all_confidence_scores, _, _ = db.search_sources(query, page=1, page_size=total_count)
+            
+            search_id = db.add_search_history_item(
+                query=query,
+                results=all_results,  # Save ALL matching results for history
+                confidence_scores=all_confidence_scores,
+                total_count=total_count
+            )
         
         timestamp = int(__import__('time').time() * 1000)
-        search_id = db.add_search_history_item(
-            query=query,
-            results=results,
-            confidence_scores=confidence_scores
-        )
         
         return SearchResponse(
             query=query,
             results=nasa_images,
             confidence_scores=confidence_scores,
             timestamp=timestamp,
-            resultCount=len(nasa_images)
+            resultCount=total_count,  # Total count of all matching results, not just current page
+            page=page,
+            pageSize=page_size,
+            has_more=has_more
         )
     
     except ValidationError as e:

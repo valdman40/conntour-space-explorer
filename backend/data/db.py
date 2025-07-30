@@ -83,16 +83,19 @@ class SpaceDB:
             "returned_count": len(items)
         }
 
-    def add_search_history_item(self, query: str, results: List[Dict], confidence_scores: Dict[int, float] = None) -> str:
+    def add_search_history_item(self, query: str, results: List[Dict], confidence_scores: Dict[int, float] = None, total_count: int = None) -> str:
         """Add a new search history item and return its ID."""
         search_id = str(uuid.uuid4())
         timestamp = int(time.time() * 1000)  # Unix timestamp in milliseconds
+        
+        # Use total_count if provided, otherwise fall back to length of results
+        result_count = total_count if total_count is not None else len(results)
         
         history_item = {
             "id": search_id,
             "query": query,
             "timestamp": timestamp,
-            "resultCount": len(results),
+            "resultCount": result_count,  # Use total count, not just current page
             "results": results,
             "confidence_scores": confidence_scores or {}
         }
@@ -162,18 +165,22 @@ class SpaceDB:
             print(f"Error clearing search history: {e}")
             return False
 
-    def search_sources(self, query: str) -> tuple[List[Dict], Dict[int, float]]:
+    def search_sources(self, query: str, page: int = 1, page_size: int = 20) -> tuple[List[Dict], Dict[int, float], bool, int]:
         """
-        Search through sources using basic keyword matching.
-        Returns (results, confidence_scores) where confidence_scores maps source id to confidence.
+        Search through sources using basic keyword matching with pagination.
+        Returns (results, confidence_scores, has_more, total_count) where:
+        - results: paginated list of matching sources
+        - confidence_scores: maps source id to confidence for all results (not just current page)
+        - has_more: boolean indicating if there are more pages
+        - total_count: total number of matching results across all pages
         
         This is a simple implementation - in a real app you'd use proper search/ML algorithms.
         """
         if not query.strip():
-            return [], {}
+            return [], {}, False, 0
         
         query_lower = query.lower()
-        results = []
+        all_results = []
         confidence_scores = {}
         
         for source in self._sources:
@@ -198,10 +205,21 @@ class SpaceDB:
                 if query_lower in searchable_text:
                     score = min(100, score * 1.5)
                 
-                results.append(source)
+                all_results.append(source)
                 confidence_scores[source['id']] = round(score, 2)
         
-        # Sort results by confidence score (highest first)
-        results.sort(key=lambda x: confidence_scores.get(x['id'], 0), reverse=True)
+        # Sort all results by confidence score (highest first)
+        all_results.sort(key=lambda x: confidence_scores.get(x['id'], 0), reverse=True)
         
-        return results, confidence_scores
+        # Apply pagination
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        paginated_results = all_results[start_index:end_index]
+        
+        # Determine if there are more pages
+        has_more = end_index < len(all_results)
+        
+        # Total count of all matching results
+        total_count = len(all_results)
+        
+        return paginated_results, confidence_scores, has_more, total_count
