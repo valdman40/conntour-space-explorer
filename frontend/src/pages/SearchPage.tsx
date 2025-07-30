@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -6,6 +6,7 @@ import {
     ErrorMessage,
     LoadMoreSection
 } from '../components/common';
+import { SearchBar } from '../components/common/SearchBar';
 import { NasaImagesList } from '../components/NasaImagesList';
 import { useAppDispatch, useAppSelector } from '../redux/store';
 import {
@@ -13,15 +14,14 @@ import {
     selectSearchLoading,
     selectSearchError,
     selectSearchHasMore,
-    selectSearchTerm,
     selectSearchPage
 } from '../redux/modules/search/selectors';
 import {
     loadImagesRequest,
     loadMoreImagesRequest,
     searchImagesRequest,
-    clearImages,
-    setSearchTerm
+    searchImagesDebounced,
+    clearImages
 } from '../redux/modules/search/reducer';
 import { loadHistoryRequest } from '../redux/modules/history/reducer';
 import { sizes } from '../constants/sizes';
@@ -61,86 +61,60 @@ const SearchResultsInfo = styled.div`
   margin-bottom: ${sizes.margin.md};
 `;
 
+const SearchBarWrapper = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: ${sizes.margin.lg};
+  padding: 0 ${sizes.padding.md};
+`;
+
 interface SearchPageProps {
-    onReload?: () => void;
     searchTerm?: string;
 }
 
-export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: externalSearchTerm }) => {
+export const SearchPage: React.FC<SearchPageProps> = ({ searchTerm: externalSearchTerm }) => {
     const { t } = useTranslation();
     const dispatch = useAppDispatch();
+
+    // Local search input state
+    const [searchInput, setSearchInput] = useState('');
 
     // Redux selectors
     const images = useAppSelector(selectSearchImages);
     const loading = useAppSelector(selectSearchLoading);
     const error = useAppSelector(selectSearchError);
     const hasMore = useAppSelector(selectSearchHasMore);
-    const searchTerm = useAppSelector(selectSearchTerm);
     const page = useAppSelector(selectSearchPage);
 
     const scrollLoadingRef = useRef(false);
 
-    // Load initial images on mount - but respect existing search state AND browsing state
     useEffect(() => {
-        console.log('SearchPage mounting/remounting. Current state:', {
-            searchTerm,
-            searchTermTrimmed: searchTerm?.trim(),
-            hasSearchTerm: !!(searchTerm && searchTerm.trim()),
-            imagesCount: images.length,
-            currentPage: page,
-            hasMore
-        });
+        dispatch(loadImagesRequest())
+    },[]);
 
-        // If there's already a search term in Redux state, restore the search results
-        if (searchTerm && searchTerm.trim()) {
-            console.log('Restoring search results for:', searchTerm);
-            dispatch(searchImagesRequest({ query: searchTerm }));
-        } else if (images.length > 0 && page >= 1) {
-            // We have existing browsing state - don't reload, just preserve what we have
-            console.log('Preserving existing browsing state:', {
-                imagesCount: images.length,
-                page,
-                hasMore
-            });
-            // Don't call loadImages() - we already have the data
-        } else {
-            // No existing search term and no existing images, load fresh
-            console.log('No existing state, loading fresh images');
-            dispatch(loadImagesRequest());
-        }
-        dispatch(loadHistoryRequest({ page: 1, pageSize: 100 }));
-    }, []);
+    // Handle search input changes and trigger debounced search
+    const handleSearch = useCallback((query: string) => {
+        setSearchInput(query);
+        dispatch(searchImagesDebounced({ query }));
+    }, [dispatch]);
 
-    // Update search term when external prop changes
-    useEffect(() => {
-        if (externalSearchTerm !== undefined && externalSearchTerm !== searchTerm) {
-            dispatch(setSearchTerm(externalSearchTerm));
-            if (externalSearchTerm.trim()) {
-                dispatch(searchImagesRequest({ query: externalSearchTerm }));
-            }
-        }
-    }, [externalSearchTerm, searchTerm, dispatch]);    // Handle load more
+
     const loadMore = useCallback(() => {
-        // Only allow load more if we're not in search mode
-        const isSearchMode = searchTerm && searchTerm.trim().length > 0;
-
-        if (!loading && hasMore && !scrollLoadingRef.current && !isSearchMode) {
+        if (!loading && hasMore && !scrollLoadingRef.current && !searchInput) {
             scrollLoadingRef.current = true;
-            dispatch(loadMoreImagesRequest());
+            const nextPage = page + 1;
+            dispatch(loadMoreImagesRequest({ page: nextPage, pageSize: 20 }));
 
             // Reset the scroll loading flag after a delay
             setTimeout(() => {
                 scrollLoadingRef.current = false;
             }, 1000);
         }
-    }, [loading, hasMore, searchTerm, dispatch]);
+    }, [loading, hasMore, searchInput, page, dispatch]);
 
     // Infinite scroll handler
     const handleScroll = useCallback(() => {
-        // Only allow infinite scroll if we're not in search mode
-        const isSearchMode = searchTerm && searchTerm.trim().length > 0;
-
-        if (scrollLoadingRef.current || !hasMore || loading || isSearchMode) {
+        if (scrollLoadingRef.current || !hasMore || loading && !searchInput) {
             return;
         }
 
@@ -151,39 +125,15 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
         if (scrollTop + clientHeight >= scrollHeight - 100) {
             loadMore();
         }
-    }, [loading, hasMore, loadMore, searchTerm]);
+    }, [loading, hasMore, loadMore, searchInput]);
 
     useEffect(() => {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [handleScroll]);
-
-    // Handle reload
-    const handleReload = useCallback(() => {
-        dispatch(clearImages());
-        dispatch(loadImagesRequest());
-    }, [dispatch]);
-
-    // Expose reload function to parent
-    useEffect(() => {
-        if (onReload) {
-            (window as any).searchPageReload = handleReload;
-        }
-    }, [onReload, handleReload]);
-
-    // Handle search from search bar
-    const handleSearch = useCallback((searchQuery: string) => {
-        if (searchQuery.trim()) {
-            dispatch(setSearchTerm(searchQuery));
-            dispatch(searchImagesRequest({ query: searchQuery }));
-
-            // Save to search history after successful search
-            // This will be handled by the saga when search is successful
-        }
-    }, [dispatch]);
+    }, [handleScroll])
 
     // Determine if a search has been performed
-    const hasSearched = searchTerm && searchTerm.trim().length > 0;
+    const hasSearched = searchInput && searchInput.trim().length > 0;
     const hasResults = images.length > 0;
     const showNoResults = hasSearched && !hasResults && !loading && !error;
     const showResultsCount = hasSearched && hasResults && !loading;
@@ -191,19 +141,18 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
     // Only show LoadMoreSection for browsing mode (not search mode)
     const shouldShowLoadMore = !hasSearched && hasResults && !error;
 
-    // Debug logging
-    console.log('SearchPage render state:', {
-        searchTerm,
-        hasSearched,
-        hasResults,
-        shouldShowLoadMore,
-        hasMore,
-        loading,
-        error: !!error
-    });
-
     return (
         <SearchPageContainer>
+            {/* Search Bar */}
+            <SearchBarWrapper>
+                <SearchBar
+                    onSearch={handleSearch}
+                    placeholder={t('mainPage.searchPlaceholder')}
+                    value={searchInput}
+                    isVisible={true}
+                />
+            </SearchBarWrapper>
+
             {loading && images.length === 0 ? (
                 <LoadingSpinner message={t('mainPage.loadingMessage')} />
             ) : (
@@ -213,7 +162,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
                         <SearchResultsInfo>
                             {t('searchPage.resultsCount', {
                                 count: images.length,
-                                query: searchTerm
+                                query: searchInput
                             })}
                         </SearchResultsInfo>
                     )}
@@ -221,7 +170,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({ onReload, searchTerm: ex
                     {/* Show no results message */}
                     {showNoResults && (
                         <SearchResultsInfo>
-                            {t('searchPage.noResults', { query: searchTerm })}
+                            {t('searchPage.noResults', { query: searchInput })}
                         </SearchResultsInfo>
                     )}
 

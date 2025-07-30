@@ -115,14 +115,11 @@ function* loadImagesSaga(): Generator<any, void, any> {
 }
 
 // Worker saga: Load more images (pagination)
-function* loadMoreImagesSaga(): Generator<any, void, any> {
+function* loadMoreImagesSaga(action: PayloadAction<{ page: number; pageSize: number }>): Generator<any, void, any> {
   try {
-    // Get current page from state
-    const state: any = yield select();
-    const currentPage = state.search.page;
-    const nextPage = currentPage + 1;
+    const { page, pageSize } = action.payload;
     
-    const response: { images: NasaImage[]; total: number; hasMore: boolean } = yield call(fetchImages, nextPage, 20);
+    const response: { images: NasaImage[]; total: number; hasMore: boolean } = yield call(fetchImages, page, pageSize);
     yield put(loadMoreImagesSuccess({
       images: response.images,
       hasMore: response.hasMore,

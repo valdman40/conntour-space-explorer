@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import styled from 'styled-components';
 import { colors } from '../../constants/colors';
 import { sizes } from '../../constants/sizes';
 
 interface SearchBarProps {
   onSearch: (searchTerm: string) => void;
+  onChange?: (searchTerm: string) => void;
   placeholder?: string;
   disabled?: boolean;
   isVisible?: boolean;
-  value?: string; // Add external value prop
+  value: string; // Make value required since it's now fully controlled
 }
 
 const SearchContainer = styled.div<{ $isVisible?: boolean }>`
@@ -87,52 +88,45 @@ const SearchIconWrapper = styled.div<{ disabled?: boolean }>`
 
 export const SearchBar: React.FC<SearchBarProps> = ({ 
   onSearch, 
+  onChange,
   placeholder = "Search images...", 
   disabled = false,
   isVisible = true,
-  value = ""
+  value
 }) => {
-  const [searchTerm, setSearchTerm] = useState(value);
-
-  // Sync with external value changes
-  useEffect(() => {
-    if (value !== searchTerm) {
-      setSearchTerm(value);
-    }
-  }, [value]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchTerm.trim()) {
-      onSearch(searchTerm.trim());
+    if (value.trim()) {
+      onSearch(value.trim());
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    // Trigger search on every keystroke - debouncing will be handled in the saga
-    onSearch(value);
+    const newValue = e.target.value;
+    // Call onChange first for immediate state update
+    if (onChange) {
+      onChange(newValue);
+    }
+    // Then call onSearch for debounced searching
+    onSearch(newValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchTerm.trim()) {
-      onSearch(searchTerm.trim());
+    if (e.key === 'Enter' && value.trim()) {
+      onSearch(value.trim());
     }
   };
 
   return (
     <SearchContainer $isVisible={isVisible}>
-      <form onSubmit={handleSubmit}>
         <SearchInput
           type="text"
-          value={searchTerm}
+          value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
         />
-      </form>
       <SearchIconWrapper disabled={disabled}>
         <svg
           width={sizes.icon.sm}

@@ -8,7 +8,6 @@ export interface SearchState {
   error: string | null;
   page: number;
   hasMore: boolean;
-  searchTerm: string;
   totalItems: number;
 }
 
@@ -19,7 +18,6 @@ const initialState: SearchState = {
   error: null,
   page: 1,
   hasMore: true,
-  searchTerm: '',
   totalItems: 0,
 };
 
@@ -46,7 +44,7 @@ const searchSlice = createSlice({
     },
 
     // Load more actions (pagination)
-    loadMoreImagesRequest: (state) => {
+    loadMoreImagesRequest: (state, action: PayloadAction<{ page: number; pageSize: number }>) => {
       state.loading = true;
       state.error = null;
     },
@@ -66,14 +64,12 @@ const searchSlice = createSlice({
     searchImagesRequest: (state, action: PayloadAction<{ query: string }>) => {
       state.loading = true;
       state.error = null;
-      state.searchTerm = action.payload.query;
       // Reset pagination for search
       state.page = 1;
     },
     searchImagesDebounced: (state, action: PayloadAction<{ query: string }>) => {
       // This action will trigger the debounced search saga
       // Don't set loading state here - let the saga handle it
-      state.searchTerm = action.payload.query;
     },
     searchImagesSuccess: (state, action: PayloadAction<{ images: NasaImage[]; hasMore: boolean; totalItems: number; isLoadMore?: boolean }>) => {
       state.loading = false;
@@ -99,11 +95,7 @@ const searchSlice = createSlice({
       state.page = 1;
       state.hasMore = true;
       state.error = null;
-      state.searchTerm = '';
       state.totalItems = 0;
-    },
-    setSearchTerm: (state, action: PayloadAction<string>) => {
-      state.searchTerm = action.payload;
     },
     resetPagination: (state) => {
       state.page = 1;
@@ -125,7 +117,6 @@ export const {
   searchImagesSuccess,
   searchImagesFailure,
   clearImages,
-  setSearchTerm,
   resetPagination,
 } = searchSlice.actions;
 
